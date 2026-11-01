@@ -94,3 +94,21 @@ kernel_size 和有效异常现场，不能据此确认新版停点或否定已�
   只做本地提交，**不做 `git push`**，也不删除任何文件。
 - 需要备份镜像或源码树时，不要改 `.gitignore` 往里塞二进制；用外部盘或
   `_quarantine/` 归档，并在报告里记录哈希。
+
+## 交付格式约定（2026-11-02，用户指定）
+
+每次给出可刷写产物时，**固定交付两个镜像**，缺一不可：
+
+- `bringup/boot-k70u-uefi-<标签>-<YYYYMMDD>.img`
+- `bringup/init_boot-k70u-uefi-<标签>-<YYYYMMDD>.img`
+
+刷写指令固定三行，**必须带镜像绝对路径**，**不写 adb/fastboot 的可执行文件路径**（直接 `adb` / `fastboot`），
+并包含自动重启：
+
+```
+fastboot flash boot "D:\漏洞\UNIXNU\适配K70U\bringup\boot-k70u-uefi-<标签>-<日期>.img"
+fastboot flash init_boot "D:\漏洞\UNIXNU\适配K70U\bringup\init_boot-k70u-uefi-<标签>-<日期>.img"
+fastboot reboot
+```
+
+同时给出两个镜像的 SHA-256，便于刷前核对。不要只给 boot，也不要把 adb 路徑写进命令行。
