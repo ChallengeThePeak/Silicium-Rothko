@@ -29,6 +29,7 @@ python3 boot_v4.py \
 
 echo "=== 导出 ==="
 cp -f "$OUT/boot-$LABEL.img" "$DST/boot-k70u-uefi-$LABEL.img"
+cp -f "$OUT/init_boot-$LABEL.img" "$DST/init_boot-k70u-uefi-$LABEL.img"
 cp -f "$FD" "$DST/SILICIUM_UEFI-$LABEL.fd"
 ls -l "$DST"/*"$LABEL"*
 sha256sum "$DST"/*"$LABEL"*
