@@ -24,6 +24,7 @@ INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
 INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
 INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
 INF MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
+  INF rothkoPkg/Drivers/RothkoDisplayDxe/RothkoDisplayDxe.inf
 INF MdeModulePkg/Universal/ResetSystemRuntimeDxe/ResetSystemRuntimeDxe.inf
 INF UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
 INF UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf

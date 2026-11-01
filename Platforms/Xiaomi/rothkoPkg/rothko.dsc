@@ -31,6 +31,17 @@
   # SetupBrowserDxe, so gEfiFormBrowser2ProtocolGuid is absent. UEFI provides this
   # documented switch: a zero PcdDriverHealthConfigureForm disables the check.
   #
+  # [k70u-fix 2026-11-02] Panel geometry validated on dali (MT6991) and on
+  # the stock LK handoff for rothko: DSC + DSI command mode, 1220x2712, 32bpp.
+  # Stride is the pitch the OVL layer actually uses (1248).
+  # Delay 0: the framebuffer console must not slow the log down.
+  #
+  gSiliciumPkgTokenSpaceGuid.PcdFrameBufferWidth|1220
+  gSiliciumPkgTokenSpaceGuid.PcdFrameBufferHeight|2712
+  gSiliciumPkgTokenSpaceGuid.PcdFrameBufferColorDepth|32
+  gSiliciumPkgTokenSpaceGuid.PcdFrameBufferStride|1248
+  gSiliciumPkgTokenSpaceGuid.PcdFrameBufferDelay|0
+  #
   gEfiMdeModulePkgTokenSpaceGuid.PcdDriverHealthConfigureForm|{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
 
 [LibraryClasses]
@@ -44,4 +55,12 @@
   CLANGDWARF:*_*_*_DLINK_FLAGS = -z common-page-size=0x10000
 
 !include rothkoPkg/UniXNUConfig.dsc.inc
+[Components]
+  #
+  # MT6989 display: inherits LK's OVL/DSI chain and drives command-mode frame
+  # submission (the dali approach). It is the only GOP producer, so the
+  # generic SimpleFbDxe stays excluded via USE_CUSTOM_DISPLAY_DRIVER = 1.
+  #
+  rothkoPkg/Drivers/RothkoDisplayDxe/RothkoDisplayDxe.inf
+
 !include rothkoPkg/UniXNUComponents.dsc.inc

@@ -1,0 +1,47 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = RothkoDisplayDxe
+  FILE_GUID                      = D6A1F3C8-2B47-4E19-9F52-7C3A8D1B6E04
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = RothkoDisplayEntry
+
+[Sources]
+  RothkoDisplayDxe.c
+  RothkoDisplayBounds.h
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  SiliciumPkg/SiliciumPkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  IoLib
+  DebugLib
+  BaseLib
+  BaseMemoryLib
+  MemoryAllocationLib
+  MemoryMapHelperLib
+  CacheMaintenanceLib
+  FrameBufferBltLib
+  FdtLib
+  HobLib
+  PcdLib
+  # ROTHKO_HEARTBEAT_MODE uses ArmCallSmc for PSCI SYSTEM_RESET.
+  ArmSmcLib
+
+[FixedPcd]
+  gSiliciumPkgTokenSpaceGuid.PcdFrameBufferWidth
+  gSiliciumPkgTokenSpaceGuid.PcdFrameBufferStride
+
+[Protocols]
+  gEfiGraphicsOutputProtocolGuid   ## PRODUCES
+  gEfiDevicePathProtocolGuid       ## PRODUCES
+
+[Guids]
+  gSiliciumEntryArgHobGuid
+
+[Depex]
+  TRUE

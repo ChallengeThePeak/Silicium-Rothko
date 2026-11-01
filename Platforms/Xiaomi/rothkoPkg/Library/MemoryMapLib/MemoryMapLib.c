@@ -24,7 +24,11 @@ STATIC EFI_MEMORY_REGION_DESCRIPTOR gMemoryDescriptor[] = {
   {"Free Low B",      0x40640000, 0x00040000, AddMem, SYS_MEM, SYS_MEM_TESTED, Conv,   WRITE_BACK_XN},
   {"DXE Heap",        0x40680000, 0x01000000, AddMem, SYS_MEM, SYS_MEM_TESTED, Conv,   WRITE_BACK_XN},
   {"Free Low C",      0x41680000, 0x06600000, AddMem, SYS_MEM, SYS_MEM_TESTED, Conv,   WRITE_BACK_XN},
-  {"Incoming DTB",    0x47C80000, 0x00400000, AddMem, SYS_MEM, SYS_MEM_TESTED, BsData, WRITE_BACK_XN},
+  // [k70u-fix 2026-11-02] Renamed to the name RothkoDisplayDxe looks up
+  // ("LK DTB"), and made reserved: LK hands the live device tree over in x0
+  // and the driver reads it, so GCD must not hand this range out. The old
+  // tree had it as MEM_RES/Reserv at the same base and size.
+  {"LK DTB", 0x47C80000, 0x00400000, AddMem, MEM_RES, SYS_MEM_TESTED, Reserv, WRITE_BACK_XN},
   {"Pstore",          0x48090000, 0x000E0000, AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
 
   // Remaining mblock free extents, excluding the live initrd envelope.
@@ -83,7 +87,26 @@ STATIC EFI_MEMORY_REGION_DESCRIPTOR gMemoryDescriptor[] = {
   // which loses the pstore buffer). WDT_LENGTH is at +4, WDT_RESTART at +8.
   //
   {"Watchdog",        0x1C00B000, 0x00001000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
-  {"GIC Redistributors",0x0C440000, 0x00200000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE}
+  {"GIC Redistributors",0x0C440000, 0x00200000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  //
+  // [k70u-fix 2026-11-02] Display plumbing for RothkoDisplayDxe.
+  // The MMIO windows below are the ones the driver probes (MMSYS, the two
+  // MUTEX banks, OVLSYS0/1, DISPSYS1, DSC0, DSI0) and were validated on
+  // dali (MT6991) and against the stock LK handoff for rothko.
+  // Display Reserved is the framebuffer carveout LK hands over in
+  // atag,videolfb: base 0xFD91F000, size 0x26E0000 (1220x2712, 32bpp).
+  //
+  {"Display MMSYS", 0x14000000, 0x1000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  {"MUTEX DISPSYS0", 0x14001000, 0x1000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  {"Display DISPSYS1", 0x14200000, 0x1000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  {"MUTEX DISPSYS1", 0x14201000, 0x1000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  {"DSC0", 0x14206000, 0x1000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  {"DSI0", 0x1420A000, 0x1000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  {"Display OVLSYS0", 0x14400000, 0x10000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  {"Display OVLSYS1", 0x14600000, 0x10000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  {"MIPI TX0", 0x11E90000, 0x1000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  {"Display Reserved", 0xFD91F000, 0x26E0000, AddMem, MEM_RES, SYS_MEM_TESTED, Reserv, WRITE_THROUGH},
+
 };
 
 VOID

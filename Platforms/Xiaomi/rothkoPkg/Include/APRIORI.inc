@@ -11,6 +11,7 @@ APRIORI DXE {
   INF FatPkg/EnhancedFatDxe/Fat.inf
   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
   INF MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
+  INF rothkoPkg/Drivers/RothkoDisplayDxe/RothkoDisplayDxe.inf
   INF UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
   # [k70u-fix 2026-11-02] BdsDxe must NOT be in APRIORI: APRIORI drivers are
   # dispatched before every other driver, so BdsDxe ran before HiiDatabaseDxe
