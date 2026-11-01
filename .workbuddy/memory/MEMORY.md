@@ -38,3 +38,20 @@ Xiaomi Redmi K70 Ultra（rothko / MT6989）用上游 `ChallengeThePeak/Silicium-
 - FAT 盘发布：initrd 总长 `0x3504188` 非 512 倍数 → `UniXNURamDiskDxe` 放弃
 - 显示/GOP 缺失，BDS 无法显示 logo 与菜单
 - XNU 引导依赖上面两项
+
+## 显示（2026-11-02 已点亮）
+- 驱动来源：旧树 `~/rothko-evidence-20261101/Mu-Silicium-fv-membership-fixed`
+  的 `Platforms/Xiaomi/rothkoPkg/Drivers/RothkoDisplayDxe/`。它按 **dali(MT6991)**
+  的规则写，**从未在 rothko 上执行过**（当年只进了 APRIORI 的 GUID，没进 FV）。
+- 移植要点：`[Components]` 段登记 INF（FDF 的 DXE.inc 只管文件清单，两者都要）；
+  `PcdFrameBufferStride` 上游没有（新增 0x0000A006）；设备树区域必须叫 **"LK DTB"**
+  （驱动用 `LocateMemoryRegionByName("LK DTB")`，改名不匹配会静默返回
+  `EFI_INVALID_PARAMETER`，DxeCore 打印 "Image ... start failed"）。
+- 内存表：帧缓冲 carveout `0xFD91F000+0x26E0000`（LK 的 atag,videolfb）；
+  驱动要探测的 MMIO：MMSYS 0x14000000 / MUTEX 0x14001000,0x14201000 /
+  OVLSYS0 0x14400000 / OVLSYS1 0x14600000 / DISPSYS1 0x14200000 / DSC0 0x14206000 /
+  DSI0 0x1420A000 / MIPI TX0 0x11E90000。
+- rothko 全屏扫描层（内核 mtkfb.txt 实锤）：addr=FB 基址、pitch=4992(1248px)、
+  size=1220|2712<<16、CFMT=RGBA。dali 的 PITCH_MSB/RDMA/CLIP/DATAPATH 等判据在
+  MT6989 上语义不同，会把图层全否掉 → 已降级为告警。
+- 推帧链：继承 LK 的 OVL→DSC→DSI→MUTEX，只写 DSI_START 0→1 + mutex，不碰 DSC/MMSYS。
