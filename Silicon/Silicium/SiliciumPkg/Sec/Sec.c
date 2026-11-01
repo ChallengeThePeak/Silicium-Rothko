@@ -30,21 +30,49 @@ extern RETURN_STATUS EFIAPI BaseDebugLibSerialPortConstructor (VOID);
 extern RETURN_STATUS EFIAPI ExtractGuidedSectionLibConstructor (VOID);
 extern RETURN_STATUS EFIAPI ArmMmuBaseLibConstructor (VOID);
 extern RETURN_STATUS EFIAPI LzmaDecompressLibConstructor (VOID);
+extern VOID EFIAPI PstoreLogBegin (VOID);
 
 // Walks the HOB list with a bound, so a zero-length or runaway entry is reported instead of looping forever in the constructors and in
 // the FV decompression that follow (both search the list).
 STATIC
 VOID
-CheckHobList (VOID)
+CheckHobList (IN CONST CHAR8 *Stage)
 {
   EFI_PEI_HOB_POINTERS  Hob;
   UINTN                 Count = 0;
 
   Hob.Raw = GetHobList ();
+  DEBUG ((EFI_D_WARN, "SEC: HOB dump %a list=%p\n", Stage, Hob.Raw));
   while (!END_OF_HOB_LIST (Hob)) {
     if (Hob.Header->HobLength < sizeof (EFI_HOB_GENERIC_HEADER) || Count >= 16384) {
       DEBUG ((EFI_D_ERROR, "SEC: HOB list broken at entry %u: type 0x%x length %u\n", (UINT32)Count, (UINT32)Hob.Header->HobType, (UINT32)Hob.Header->HobLength));
       return;
+    }
+
+    DEBUG ((DEBUG_INFO, "SEC: HOB[%u] ptr=%p type=0x%x length=%u\n", (UINT32)Count, Hob.Raw, (UINT32)Hob.Header->HobType, (UINT32)Hob.Header->HobLength));
+    switch (Hob.Header->HobType) {
+      case EFI_HOB_TYPE_HANDOFF:
+        DEBUG ((EFI_D_WARN, "SEC: PHIT memory=[0x%Lx,0x%Lx) free=[0x%Lx,0x%Lx) end=0x%Lx boot=0x%x\n",
+          Hob.HandoffInformationTable->EfiMemoryBottom, Hob.HandoffInformationTable->EfiMemoryTop,
+          Hob.HandoffInformationTable->EfiFreeMemoryBottom, Hob.HandoffInformationTable->EfiFreeMemoryTop,
+          Hob.HandoffInformationTable->EfiEndOfHobList, (UINT32)Hob.HandoffInformationTable->BootMode));
+        break;
+      case EFI_HOB_TYPE_RESOURCE_DESCRIPTOR:
+      case EFI_HOB_TYPE_RESOURCE_DESCRIPTOR2:
+        DEBUG ((DEBUG_INFO, "SEC: resource type=%u base=0x%Lx size=0x%Lx attr=0x%Lx\n",
+          Hob.ResourceDescriptor->ResourceType, Hob.ResourceDescriptor->PhysicalStart,
+          Hob.ResourceDescriptor->ResourceLength, Hob.ResourceDescriptor->ResourceAttribute));
+        break;
+      case EFI_HOB_TYPE_MEMORY_ALLOCATION:
+        DEBUG ((DEBUG_INFO, "SEC: allocation base=0x%Lx size=0x%Lx type=%u name=%g\n",
+          Hob.MemoryAllocation->AllocDescriptor.MemoryBaseAddress, Hob.MemoryAllocation->AllocDescriptor.MemoryLength,
+          (UINT32)Hob.MemoryAllocation->AllocDescriptor.MemoryType, &Hob.MemoryAllocation->AllocDescriptor.Name));
+        break;
+      case EFI_HOB_TYPE_FV:
+        DEBUG ((DEBUG_INFO, "SEC: FV base=0x%Lx size=0x%Lx\n", Hob.FirmwareVolume->BaseAddress, Hob.FirmwareVolume->Length));
+        break;
+      default:
+        break;
     }
 
     Count++;
@@ -102,6 +130,10 @@ InitializeMemory (VOID)
   UINTN UefiMemoryBase = UefiMemoryRegion.Address;
   UINTN UefiMemorySize = UefiMemoryRegion.Length;
 
+  DEBUG ((EFI_D_WARN, "SEC: heap base=0x%Lx size=0x%Lx resource=%u attr=0x%Lx memory=%u arm=%u\n",
+    (UINT64)UefiMemoryBase, (UINT64)UefiMemorySize, UefiMemoryRegion.ResourceType,
+    UefiMemoryRegion.ResourceAttribute, (UINT32)UefiMemoryRegion.MemoryType, (UINT32)UefiMemoryRegion.ArmAttributes));
+
   // Verify UEFI Memory Base
   if (UefiMemoryBase == 0 && UefiMemorySize == 0) {
     DEBUG ((EFI_D_ERROR, "Failed to Locate \"DXE Heap\" Memory Region!\n"));
@@ -111,15 +143,18 @@ InitializeMemory (VOID)
   // Initialize HOB List
   HobList = HobConstructor ((VOID *)UefiMemoryBase, UefiMemorySize, (VOID *)UefiMemoryBase, (VOID *)(UefiMemoryBase + UefiMemorySize));
   PrePeiSetHobList (HobList);
+  DEBUG ((EFI_D_WARN, "SEC: HobConstructor list=%p free=[0x%Lx,0x%Lx)\n", HobList, HobList->EfiFreeMemoryBottom, HobList->EfiFreeMemoryTop));
 
   // Initialize MMU & Memory HOBs
   Status = MemoryPeim (UefiMemoryBase, UefiMemorySize);
+  DEBUG ((EFI_D_WARN, "SEC: MemoryPeim returned %r SCTLR=0x%Lx\n", Status, (UINT64)ArmReadSctlr ()));
   if (EFI_ERROR (Status)) {
     return Status;
   }
 
   // Build Stack HOB
   BuildStackHob (FixedPcdGet64 (PcdCPUCoresStackBase), FixedPcdGet32 (PcdCPUCorePrimaryStackSize));
+  DEBUG ((EFI_D_WARN, "SEC: stack base=0x%Lx size=0x%x\n", FixedPcdGet64 (PcdCPUCoresStackBase), FixedPcdGet32 (PcdCPUCorePrimaryStackSize)));
 
   return EFI_SUCCESS;
 }
@@ -131,11 +166,14 @@ SecMain (VOID)
   EFI_STATUS Status;
 
   // Do Platform Specific Initialization
+  DEBUG ((EFI_D_WARN, "SEC: PlatformInitialize begin\n"));
   PlatformInitialize ();
+  DEBUG ((EFI_D_WARN, "SEC: PlatformInitialize done\n"));
 
 #ifndef MDEPKG_NDEBUG
   // Initialize Serial Port
   Status = SerialPortInitialize ();
+  DEBUG ((EFI_D_WARN, "SEC: SerialPortInitialize returned %r\n", Status));
   if (EFI_ERROR (Status)) {
     return;
   }
@@ -144,12 +182,15 @@ SecMain (VOID)
   PrintFirmwareVersion ();
 
   // Initialize Debug Agent
+  DEBUG ((EFI_D_WARN, "SEC: debug agent begin\n"));
   InitializeDebugAgent (DEBUG_AGENT_INIT_POSTMEM_SEC, NULL, NULL);
   SaveAndSetDebugTimerInterrupt (TRUE);
+  DEBUG ((EFI_D_WARN, "SEC: debug agent done\n"));
 #endif
 
   // Initialize Memory
   Status = InitializeMemory ();
+  DEBUG ((EFI_D_WARN, "SEC: InitializeMemory returned %r\n", Status));
   if (EFI_ERROR (Status)) {
     return;
   }
@@ -158,6 +199,7 @@ SecMain (VOID)
 
   // Build CPU HOB
   BuildCpuHob (ArmGetPhysicalAddressBits (), PcdGet8 (PcdPrePiCpuIoSize));
+  DEBUG ((EFI_D_WARN, "SEC: CPU HOB physical-bits=%u io-bits=%u\n", (UINT32)ArmGetPhysicalAddressBits (), (UINT32)PcdGet8 (PcdPrePiCpuIoSize)));
 
   // Set the Boot Mode
   SetBootMode (BOOT_WITH_DEFAULT_SETTINGS);
@@ -175,9 +217,10 @@ SecMain (VOID)
     UINT64  EntryArg = gSecEntryArg0;
 
     BuildGuidDataHob (&gSiliciumEntryArgHobGuid, &EntryArg, sizeof (EntryArg));
+    DEBUG ((EFI_D_WARN, "SEC: entry argument HOB x0=0x%Lx\n", EntryArg));
   }
 
-  CheckHobList ();
+  CheckHobList ("before-constructors");
 
   // Run Library Cconstructors
   DEBUG ((EFI_D_WARN, "SEC: constructor debug\n"));
@@ -189,7 +232,7 @@ SecMain (VOID)
   DEBUG ((EFI_D_WARN, "SEC: constructor lzma\n"));
   LzmaDecompressLibConstructor ();
   DEBUG ((EFI_D_WARN, "SEC: constructors done\n"));
-  CheckHobList ();
+  CheckHobList ("before-FV");
 
   // Decompress all FVs
   Status = DecompressFirstFv ();
@@ -199,9 +242,12 @@ SecMain (VOID)
     return;
   }
 
+  CheckHobList ("before-DXE");
+
   // Load DXE Core
   DEBUG ((EFI_D_WARN, "SEC: loading DXE core\n"));
   Status = LoadDxeCoreFromFv (NULL, 0);
+  DEBUG ((EFI_D_ERROR, "SEC: LoadDxeCoreFromFv unexpectedly returned %r\n", Status));
   if (EFI_ERROR (Status)) {
     DEBUG ((EFI_D_ERROR, "Failed to Load DXE Core! Status = %r\n", Status));
   }
@@ -234,6 +280,15 @@ SecEntry (VOID)
   // Enable new Exception Vector Table
   ArmWriteVBar ((UINTN)SecVectorTable);
 
+  // Record entry before platform, framebuffer and MMU initialization can stall.
+  PstoreLogBegin ();
+  DEBUG ((EFI_D_WARN, "K70U_UEFI_TRACE_V2 x0=0x%Lx SCTLR=0x%Lx VBAR=%p ticks=0x%Lx\n",
+    gSecEntryArg0, (UINT64)ArmReadSctlr (), SecVectorTable, GetPerformanceCounter ()));
+  DEBUG ((EFI_D_WARN, "SEC: FD base=0x%Lx size=0x%x stack=0x%Lx size=0x%x\n",
+    FixedPcdGet64 (PcdFdBaseAddress), FixedPcdGet32 (PcdFdSize),
+    FixedPcdGet64 (PcdCPUCoresStackBase), FixedPcdGet32 (PcdCPUCorePrimaryStackSize)));
+
   // Enter Main SEC Function
   SecMain ();
+  DEBUG ((EFI_D_ERROR, "SEC: SecMain unexpectedly returned\n"));
 }

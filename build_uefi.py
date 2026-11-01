@@ -46,6 +46,7 @@ class BuildContext:
     enable_secureboot: bool
     cleanup:           bool
     update:            bool
+    tool_chain_tag:    str = "CLANGPDB"
 
 def setup_logger ():
     global logger
@@ -237,7 +238,7 @@ def compile_uefi (ctx: BuildContext, fd_config: dict, script_path: Path) -> bool
 def create_android_boot_img (ctx: BuildContext, image_kernel_config: dict, image_config: dict, append_boot_shim: bool, add_output_suffix: bool) -> bool:
     # Set Base Paths
     device_pkg_path = BUILD_PATH         / f"{ctx.device}Pkg"
-    fv_path         = device_pkg_path    / f"{ctx.build_mode}_CLANGPDB" / "FV"
+    fv_path         = device_pkg_path    / f"{ctx.build_mode}_{ctx.tool_chain_tag}" / "FV"
 
     # Set File Paths
     android_kernel  = device_pkg_path    / f"{ctx.device}-kernel"
@@ -366,7 +367,7 @@ def create_payload_file (ctx: BuildContext, payload_config: dict, append_boot_sh
 
     # Set Base Paths
     device_pkg_path = BUILD_PATH      / f"{ctx.device}Pkg"
-    fv_path         = device_pkg_path / f"{ctx.build_mode}_CLANGPDB" / "FV"
+    fv_path         = device_pkg_path / f"{ctx.build_mode}_{ctx.tool_chain_tag}" / "FV"
 
     # Set File Paths
     uefi_fd         = fv_path         / "SILICIUM_UEFI.fd"
@@ -440,6 +441,8 @@ def main ():
     if config_data is None:
         logger.error (f"There is no Config File in \"{RESOURCE_CONFIGS_PATH}\" for \"{ctx.device}\"!")
         sys.exit (1)
+
+    ctx.tool_chain_tag = config_data.get ("tool_chain_tag", "CLANGPDB")
 
     # Get Device Status Config
     device_status = config_data.get ("status")

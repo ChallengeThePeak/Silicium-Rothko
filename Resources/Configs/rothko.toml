@@ -1,0 +1,19 @@
+#
+# Redmi K70 Ultra (Rothko), based on the OS3.0.303/LK mblock snapshot.
+# These addresses are for host-build and bounded boot testing only.
+#
+tool_chain_tag = "CLANGDWARF"
+
+[uefi_fd]
+base = 0x40400000
+size = 0x200000
+
+[boot_image_kernel]
+kernel_compression = "gzip"
+append_dtb         = false
+
+[boot_image]
+header_version = 4
+
+[boot_shim]
+requires_kernel_header = true

@@ -120,6 +120,7 @@ MemoryPeim (
   GetMemoryMap (&MemoryDescriptor, &MemoryDescriptorCount);
 
   DEBUG ((EFI_D_WARN, "MMU: %u regions\n", (UINT32)MemoryDescriptorCount));
+  DEBUG ((EFI_D_WARN, "MMU: heap requested base=0x%Lx size=0x%Lx\n", UefiMemoryBase, UefiMemorySize));
 
   // Validate Memory Map
   ValidateMemoryMap (MemoryDescriptor, MemoryDescriptorCount);
@@ -127,8 +128,14 @@ MemoryPeim (
 
   // Go thru each Memory Region
   for (UINT8 i = 0; i < MemoryDescriptorCount; i++) {
+    DEBUG ((DEBUG_INFO, "MMU: region[%u] %a base=0x%Lx size=0x%Lx hob=%u resource=%u attr=0x%Lx type=%u arm=%u\n",
+      (UINT32)i, MemoryDescriptor[i].Name, MemoryDescriptor[i].Address, MemoryDescriptor[i].Length,
+      (UINT32)MemoryDescriptor[i].HobOption, MemoryDescriptor[i].ResourceType, MemoryDescriptor[i].ResourceAttribute,
+      (UINT32)MemoryDescriptor[i].MemoryType, (UINT32)MemoryDescriptor[i].ArmAttributes));
+
     // Add HOB
     AddHob (MemoryDescriptor[i]);
+    DEBUG ((DEBUG_INFO, "MMU: region[%u] HOBs built\n", (UINT32)i));
 
     // Verify Memory Region HOB Option
     if (MemoryDescriptor[i].HobOption == HobOnlyNoCacheSetting) {
@@ -146,10 +153,11 @@ MemoryPeim (
   }
 
   DEBUG ((EFI_D_WARN, "MMU: HOBs built, enabling\n"));
+  DEBUG ((EFI_D_WARN, "MMU: ArmConfigureMmu begin entries=%u\n", (UINT32)Index));
 
   // Configure MMU
   Status = ArmConfigureMmu (MemoryTable, &TranslationTableBase, &TranslationTableSize);
-  DEBUG ((EFI_D_WARN, "MMU: enabled\n"));
+  DEBUG ((EFI_D_WARN, "MMU: ArmConfigureMmu returned %r tables=%p bytes=0x%Lx\n", Status, TranslationTableBase, (UINT64)TranslationTableSize));
   if (EFI_ERROR (Status)) {
     DEBUG ((EFI_D_ERROR, "Failed to Configure MMU! Status = %r\n", Status));
     return Status;
@@ -157,7 +165,9 @@ MemoryPeim (
 
   // Build Memory Type Info HOB
   if (FeaturePcdGet (PcdPrePiProduceMemoryTypeInformationHob)) {
+    DEBUG ((EFI_D_WARN, "MMU: memory type HOB begin\n"));
     BuildMemoryTypeInformationHob ();
+    DEBUG ((EFI_D_WARN, "MMU: memory type HOB done\n"));
   }
 
   return EFI_SUCCESS;

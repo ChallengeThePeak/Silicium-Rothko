@@ -1,3 +1,4 @@
+#include <Library/BaseLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/CacheMaintenanceLib.h>
 #include <Library/MemoryMapHelperLib.h>
@@ -9,7 +10,84 @@
 #include "FrameBuffer.h"
 #include "Font.h"
 
+#define PSTORE_BASE       0x48090000
+// The pmsg zone is last: mem_size (0xE0000) - pmsg_size (0x80000).
+#define PSTORE_PMSG_OFFSET 0x00060000
+#define PSTORE_PMSG_SIZE  0x00080000
+#define PSTORE_SIGNATURE  0x43474244
+
+typedef struct {
+  volatile UINT32  Signature;
+  volatile INT32   Start;
+  volatile INT32   Size;
+  volatile UINT8   Data[];
+} PSTORE_BUFFER;
+
 FB_GEOMETRY  mFbGeometry;
+
+STATIC
+VOID
+PstoreWrite (
+  IN CONST UINT8  *Data,
+  IN UINTN         Length
+  )
+{
+  PSTORE_BUFFER  *Buffer;
+  UINTN           Capacity;
+  UINTN           Start;
+  UINTN           Count;
+  UINTN           FirstPart;
+
+  if (Length == 0) {
+    return;
+  }
+
+  Buffer   = (PSTORE_BUFFER *)(UINTN)(PSTORE_BASE + PSTORE_PMSG_OFFSET);
+  Capacity = PSTORE_PMSG_SIZE - sizeof (*Buffer);
+
+  if ((Buffer->Signature != PSTORE_SIGNATURE) ||
+      (Buffer->Size < 0) || ((UINTN)Buffer->Size > Capacity) ||
+      (Buffer->Start < 0) || ((UINTN)Buffer->Start >= Capacity))
+  {
+    Buffer->Signature = PSTORE_SIGNATURE;
+    Buffer->Start     = 0;
+    Buffer->Size      = 0;
+  }
+
+  if (Length > Capacity) {
+    Data   += Length - Capacity;
+    Length  = Capacity;
+  }
+
+  Count = Length;
+  if ((UINTN)Buffer->Size < Capacity) {
+    UINTN  NewSize = (UINTN)Buffer->Size + Count;
+    Buffer->Size = (INT32)((NewSize > Capacity) ? Capacity : NewSize);
+  }
+
+  Start = (UINTN)Buffer->Start;
+  Buffer->Start = (INT32)((Start + Count) % Capacity);
+  FirstPart = Capacity - Start;
+  if (FirstPart > Count) {
+    FirstPart = Count;
+  }
+
+  CopyMem ((VOID *)(Buffer->Data + Start), Data, FirstPart);
+  if (FirstPart < Count) {
+    CopyMem ((VOID *)Buffer->Data, Data + FirstPart, Count - FirstPart);
+  }
+
+  MemoryFence ();
+}
+
+VOID
+EFIAPI
+PstoreLogBegin (
+  VOID
+  )
+{
+  PstoreWrite ((CONST UINT8 *)"K70U_UEFI_PSTORE_BEGIN\r\n", sizeof ("K70U_UEFI_PSTORE_BEGIN\r\n") - 1);
+}
 
 inline
 STATIC
@@ -302,6 +380,8 @@ SerialPortWrite (
   EFI_STATUS           Status;
   EFI_PHYSICAL_ADDRESS FbBase;
   UINT64               FbLength;
+
+  PstoreWrite (Buffer, NumberOfBytes);
 
   // Get Frame Buffer Memory
   Status = GetFrameBufferMemory (&FbBase, &FbLength);
