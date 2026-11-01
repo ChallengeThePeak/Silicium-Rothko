@@ -55,3 +55,11 @@ Xiaomi Redmi K70 Ultra（rothko / MT6989）用上游 `ChallengeThePeak/Silicium-
   size=1220|2712<<16、CFMT=RGBA。dali 的 PITCH_MSB/RDMA/CLIP/DATAPATH 等判据在
   MT6989 上语义不同，会把图层全否掉 → 已降级为告警。
 - 推帧链：继承 LK 的 OVL→DSC→DSI→MUTEX，只写 DSI_START 0→1 + mutex，不碰 DSC/MMSYS。
+
+## 显示实测结论（2026-11-02 亮屏）
+- 实锤：`soft=00000004` → 唯一被降级的软判据是 **PITCH_MSB 的 bit20**（MT6989 另有用途，
+  dali 规则会误杀）。RDMA_CTRL=0x1、OFFSET/CLIP/DATAPATH_EXT/CLRFMT_EXT 全 0，本来都能过。
+- 扫描层共 2 个：L0=帧缓冲(pitch 4992/1248px, addr=FB 基址)、L1=LK 的 UI 层(pitch 4880)。
+  顶部花屏=两个扫描层叠加（GOP 内容与 LK 的 logo/UI 同时在扫）+ pitch 1248 与 1220 不匹配。
+- 推帧成功：mutex bank0 mod0=0x5080B735（含 DSI0 位），banks=7，
+  `frame 1/2 submitted, dsi status=800A0004/800B0016` → DSI 命令模式触发链正常。
