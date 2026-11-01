@@ -2287,9 +2287,6 @@ CoreInitializeMemoryServices (
   // Cache the PHIT HOB for later use
   //
   PhitHob = Hob.HandoffInformationTable;
-  DEBUG ((DEBUG_WARN, "GCD: init memory HOB=%p memory=[0x%Lx,0x%Lx) free=[0x%Lx,0x%Lx) end=0x%Lx\n",
-    PhitHob, PhitHob->EfiMemoryBottom, PhitHob->EfiMemoryTop,
-    PhitHob->EfiFreeMemoryBottom, PhitHob->EfiFreeMemoryTop, PhitHob->EfiEndOfHobList));
 
   if (PcdGet64 (PcdLoadModuleAtFixAddressEnable) != 0) {
     ReservedCodePageNumber  = PcdGet32 (PcdLoadFixAddressRuntimeCodePageNumber);
@@ -2320,8 +2317,6 @@ CoreInitializeMemoryServices (
   // Include the total memory bin size needed to make sure memory bin could be allocated successfully.
   //
   MinimalMemorySizeNeeded = MINIMUM_INITIAL_MEMORY_SIZE + CalculateTotalMemoryBinSizeNeeded (NULL, gMemoryTypeInformation);
-  DEBUG ((DEBUG_WARN, "GCD: minimum=0x%Lx attribute-mask=0x%Lx expected=0x%Lx\n",
-    MinimalMemorySizeNeeded, (UINT64)MEMORY_ATTRIBUTE_MASK, (UINT64)TESTED_MEMORY_ATTRIBUTES));
 
   //
   // Find the Resource Descriptor HOB that contains PHIT range EfiFreeMemoryBottom..EfiFreeMemoryTop
@@ -2340,20 +2335,11 @@ CoreInitializeMemoryServices (
     // Skip Resource Descriptor HOBs that do not describe tested system memory
     //
     ResourceHob = Hob.ResourceDescriptor;
-    DEBUG ((DEBUG_INFO, "GCD: candidate HOB=%p type=%u base=0x%Lx size=0x%Lx attr=0x%Lx masked=0x%Lx\n",
-      ResourceHob, ResourceHob->ResourceType, ResourceHob->PhysicalStart, ResourceHob->ResourceLength,
-      ResourceHob->ResourceAttribute, ResourceHob->ResourceAttribute & MEMORY_ATTRIBUTE_MASK));
     if (ResourceHob->ResourceType != EFI_RESOURCE_SYSTEM_MEMORY) {
-      DEBUG ((DEBUG_INFO, "GCD: reject non-system-memory\n"));
       continue;
     }
 
     if ((ResourceHob->ResourceAttribute & MEMORY_ATTRIBUTE_MASK) != TESTED_MEMORY_ATTRIBUTES) {
-      DEBUG ((DEBUG_WARN, "GCD: reject attributes base=0x%Lx masked=0x%Lx expected=0x%Lx extra=0x%Lx missing=0x%Lx\n",
-        ResourceHob->PhysicalStart, ResourceHob->ResourceAttribute & MEMORY_ATTRIBUTE_MASK,
-        (UINT64)TESTED_MEMORY_ATTRIBUTES,
-        ResourceHob->ResourceAttribute & MEMORY_ATTRIBUTE_MASK & ~(UINT64)TESTED_MEMORY_ATTRIBUTES,
-        (UINT64)TESTED_MEMORY_ATTRIBUTES & ~ResourceHob->ResourceAttribute));
       continue;
     }
 
@@ -2361,7 +2347,6 @@ CoreInitializeMemoryServices (
     // Skip Resource Descriptor HOBs that do not contain the PHIT range EfiFreeMemoryBottom..EfiFreeMemoryTop
     //
     if (PhitHob->EfiFreeMemoryBottom < ResourceHob->PhysicalStart) {
-      DEBUG ((DEBUG_INFO, "GCD: reject bottom free=0x%Lx resource=0x%Lx\n", PhitHob->EfiFreeMemoryBottom, ResourceHob->PhysicalStart));
       continue;
     }
 
@@ -2376,7 +2361,6 @@ CoreInitializeMemoryServices (
     }
 
     if (PhitHob->EfiFreeMemoryTop > ResourceHobMemoryTop) {
-      DEBUG ((DEBUG_INFO, "GCD: reject top free=0x%Lx resource=0x%Lx\n", PhitHob->EfiFreeMemoryTop, ResourceHobMemoryTop));
       continue;
     }
 
@@ -2385,7 +2369,6 @@ CoreInitializeMemoryServices (
     //
     PhitResourceHob = ResourceHob;
     Found           = TRUE;
-    DEBUG ((DEBUG_WARN, "GCD: PHIT resource matched base=0x%Lx top=0x%Lx\n", ResourceHob->PhysicalStart, ResourceHobMemoryTop));
 
     //
     // If a Memory Type Information Resource HOB was found and is the same
@@ -2434,8 +2417,6 @@ CoreInitializeMemoryServices (
   //
   // Assert if a resource descriptor HOB for the memory region described by the PHIT was not found
   //
-  DEBUG ((DEBUG_WARN, "GCD: PHIT search found=%u selected=%p base=0x%Lx length=0x%Lx required=0x%Lx\n",
-    (UINT32)Found, PhitResourceHob, BaseAddress, Length, MinimalMemorySizeNeeded));
   ASSERT (Found);
 
   //

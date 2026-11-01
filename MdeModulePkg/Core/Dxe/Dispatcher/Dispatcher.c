@@ -517,9 +517,7 @@ CoreDispatcher (
           );
         ASSERT (DriverEntry->ImageHandle != NULL);
 
-        DEBUG ((DEBUG_INFO, "DXE: driver start %g handle=%p\n", &DriverEntry->FileName, DriverEntry->ImageHandle));
         Status = CoreStartImage (DriverEntry->ImageHandle, NULL, NULL);
-        DEBUG ((DEBUG_INFO, "DXE: driver returned %g status=%r\n", &DriverEntry->FileName, Status));
 
         REPORT_STATUS_CODE_WITH_EXTENDED_DATA (
           EFI_PROGRESS_CODE,

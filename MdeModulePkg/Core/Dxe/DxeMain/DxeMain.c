@@ -246,7 +246,6 @@ DxeMain (
   EFI_VECTOR_HANDOFF_INFO       *VectorInfo;
   VOID                          *EntryPoint;
 
-  DEBUG ((DEBUG_WARN, "DXE: DxeMain entered HOB=%p\n", HobStart));
   //
   // Setup the default exception handlers
   //
@@ -257,27 +256,23 @@ DxeMain (
   }
 
   Status = InitializeCpuExceptionHandlers (VectorInfoList);
-  DEBUG ((DEBUG_WARN, "DXE: CPU exception handlers %r vectors=%p\n", Status, VectorInfoList));
   ASSERT_EFI_ERROR (Status);
 
   //
   // Setup Exception Stack
   //
   Status = InitializeSeparateExceptionStacks (NULL, NULL);
-  DEBUG ((DEBUG_WARN, "DXE: exception stacks %r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   //
   // Initialize Debug Agent to support source level debug in DXE phase
   //
   InitializeDebugAgent (DEBUG_AGENT_INIT_DXE_CORE, HobStart, NULL);
-  DEBUG ((DEBUG_WARN, "DXE: debug agent done; memory services begin\n"));
 
   //
   // Initialize Memory Services
   //
   CoreInitializeMemoryServices (&HobStart, &MemoryBaseAddress, &MemoryLength);
-  DEBUG ((DEBUG_WARN, "DXE: memory services done HOB=%p base=0x%Lx size=0x%Lx\n", HobStart, MemoryBaseAddress, MemoryLength));
 
   MemoryProfileInit (HobStart);
 
@@ -285,14 +280,12 @@ DxeMain (
   // Start the Handle Services.
   //
   Status = CoreInitializeHandleServices ();
-  DEBUG ((DEBUG_WARN, "DXE: handle services %r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   //
   // Start the Image Services.
   //
   Status = CoreInitializeImageServices (HobStart);
-  DEBUG ((DEBUG_WARN, "DXE: image services %r\n", Status));
   // MU_CHANGE START Assert Status but omit EFI_NOT_READY as it just implies gCPU is not yet installed
   if (Status != EFI_NOT_READY) {
     ASSERT_EFI_ERROR (Status);
@@ -302,7 +295,6 @@ DxeMain (
   // Initialize the Global Coherency Domain Services
   //
   Status = CoreInitializeGcdServices (&HobStart, MemoryBaseAddress, MemoryLength);
-  DEBUG ((DEBUG_WARN, "DXE: GCD services %r HOB=%p\n", Status, HobStart));
   ASSERT_EFI_ERROR (Status);
 
   //
@@ -316,7 +308,6 @@ DxeMain (
   ASSERT (gDxeCoreRT != NULL);
 
   gDxeCoreST->RuntimeServices = gDxeCoreRT;
-  DEBUG ((DEBUG_WARN, "DXE: system table=%p runtime=%p constructors begin\n", gDxeCoreST, gDxeCoreRT));
 
   //
   // Update DXE Core Loaded Image Protocol with allocated UEFI System Table
@@ -327,7 +318,6 @@ DxeMain (
   // Call constructor for all libraries
   //
   ProcessLibraryConstructorList (gDxeCoreImageHandle, gDxeCoreST);
-  DEBUG ((DEBUG_WARN, "DXE: constructors done\n"));
   PERF_CROSSMODULE_END ("PEI");
   PERF_CROSSMODULE_BEGIN ("DXE");
 
@@ -482,9 +472,7 @@ DxeMain (
   MemoryProfileInstallProtocol ();
 
   CoreInitializeMemoryAttributesTable ();
-  DEBUG ((DEBUG_WARN, "DXE: memory attributes table done; memory protection begin\n"));
   CoreInitializeMemoryProtection ();
-  DEBUG ((DEBUG_WARN, "DXE: memory protection done\n"));
 
   //
   // Get persisted vector hand-off info from GUIDeed HOB again due to HobStart may be updated,
@@ -540,31 +528,26 @@ DxeMain (
   // Produce Firmware Volume Protocols, one for each FV in the HOB list.
   //
   Status = FwVolBlockDriverInit (gDxeCoreImageHandle, gDxeCoreST);
-  DEBUG ((DEBUG_WARN, "DXE: FV block driver %r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   Status = FwVolDriverInit (gDxeCoreImageHandle, gDxeCoreST);
-  DEBUG ((DEBUG_WARN, "DXE: FV driver %r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   //
   // Produce the Section Extraction Protocol
   //
   Status = InitializeSectionExtraction (gDxeCoreImageHandle, gDxeCoreST);
-  DEBUG ((DEBUG_WARN, "DXE: section extraction %r\n", Status));
   ASSERT_EFI_ERROR (Status);
 
   //
   // Initialize the DXE Dispatcher
   //
   CoreInitializeDispatcher ();
-  DEBUG ((DEBUG_WARN, "DXE: dispatcher initialized; dispatch begin\n"));
 
   //
   // Invoke the DXE Dispatcher
   //
   CoreDispatcher ();
-  DEBUG ((DEBUG_WARN, "DXE: dispatch returned\n"));
 
   //
   // Display Architectural protocols that were not loaded if this is DEBUG build
@@ -585,7 +568,6 @@ DxeMain (
   // Assert if the Architectural Protocols are not present.
   //
   Status = CoreAllEfiServicesAvailable ();
-  DEBUG ((DEBUG_WARN, "DXE: architectural protocols %r\n", Status));
   if (EFI_ERROR (Status)) {
     //
     // Report Status code that some Architectural Protocols are not present.
@@ -609,9 +591,7 @@ DxeMain (
   //
   // Transfer control to the BDS Architectural Protocol
   //
-  DEBUG ((DEBUG_WARN, "DXE: entering BDS protocol=%p\n", gBds));
   gBds->Entry (gBds);
-  DEBUG ((DEBUG_ERROR, "DXE: BDS unexpectedly returned\n"));
 
   //
   // BDS should never return
