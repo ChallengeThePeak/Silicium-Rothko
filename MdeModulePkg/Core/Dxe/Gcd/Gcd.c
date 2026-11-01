@@ -2415,6 +2415,34 @@ CoreInitializeMemoryServices (
   }
 
   //
+  // [k70u-debug 2026-11-02] Dump the PHIT range and every resource descriptor HOB
+  // so the Gcd.c(2420) assertion can be localised from pstore alone.
+  //
+  DEBUG ((
+    DEBUG_ERROR,
+    "K70U-GCD: PhitFreeBottom=0x%lx PhitFreeTop=0x%lx PhitMemTop=0x%lx Found=%d\n",
+    (UINT64)PhitHob->EfiFreeMemoryBottom,
+    (UINT64)PhitHob->EfiFreeMemoryTop,
+    (UINT64)PhitHob->EfiMemoryTop,
+    Found
+    ));
+  for (Hob.Raw = *HobStart; !END_OF_HOB_LIST (Hob); Hob.Raw = GET_NEXT_HOB (Hob)) {
+    if ((GET_HOB_TYPE (Hob) != EFI_HOB_TYPE_RESOURCE_DESCRIPTOR) &&
+        (GET_HOB_TYPE (Hob) != EFI_HOB_TYPE_RESOURCE_DESCRIPTOR2)) {
+      continue;
+    }
+
+    DEBUG ((
+      DEBUG_ERROR,
+      "K70U-GCD: RD base=0x%lx len=0x%lx type=0x%x attr=0x%x\n",
+      Hob.ResourceDescriptor->PhysicalStart,
+      Hob.ResourceDescriptor->ResourceLength,
+      Hob.ResourceDescriptor->ResourceType,
+      Hob.ResourceDescriptor->ResourceAttribute
+      ));
+  }
+
+  //
   // Assert if a resource descriptor HOB for the memory region described by the PHIT was not found
   //
   ASSERT (Found);

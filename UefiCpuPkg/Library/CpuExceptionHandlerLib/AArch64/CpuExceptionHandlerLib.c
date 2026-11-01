@@ -414,6 +414,32 @@ DumpCpuContext (
 
   DEBUG ((DEBUG_ERROR, "\n ESR : EC 0x%02x  IL 0x%x  ISS 0x%08x\n", (SystemContext.SystemContextAArch64->ESR & 0xFC000000) >> 26, (SystemContext.SystemContextAArch64->ESR >> 25) & 0x1, SystemContext.SystemContextAArch64->ESR & 0x1FFFFFF));
 
+  //
+  // [k70u-debug 2026-11-02] Record the translation regime in force when the
+  // fault was taken. The SEC-time values are known; these must match them.
+  //
+  {
+    UINT64  Tcr;
+    UINT64  Ttbr0;
+    UINT64  Sctlr;
+    UINT64  El;
+
+    __asm__ __volatile__ ("mrs %0, tcr_el1"   : "=r" (Tcr));
+    __asm__ __volatile__ ("mrs %0, ttbr0_el1" : "=r" (Ttbr0));
+    __asm__ __volatile__ ("mrs %0, sctlr_el1" : "=r" (Sctlr));
+    __asm__ __volatile__ ("mrs %0, CurrentEL" : "=r" (El));
+
+    DEBUG ((
+      DEBUG_ERROR,
+      "K70U-EXC: CurrentEL=0x%lx SCTLR=0x%lx TCR=0x%lx TTBR0=0x%lx T0SZ=0x%lx\n",
+      El,
+      Sctlr,
+      Tcr,
+      Ttbr0,
+      Tcr & 0x3F
+      ));
+  }
+
   DescribeExceptionSyndrome (SystemContext.SystemContextAArch64->ESR);
 
   DEBUG ((DEBUG_ERROR, "\nStack dump:\n"));
