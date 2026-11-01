@@ -17,7 +17,7 @@ All locally committed source versions are stored in this private repository:
 Other upstream dependencies retain their original submodule locations.
 
 ```sh
-git clone --recurse-submodules https://github.com/mx-wj/Silicium-Rothko.git
+git clone --recurse-submodules https://github.com/ChallengeThePeak/Silicium-Rothko.git
 ```
 
 ## Build And Package

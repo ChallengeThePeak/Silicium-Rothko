@@ -20,7 +20,7 @@
 ```bash
 mkdir -p "$HOME/k70u"
 cd "$HOME/k70u"
-git clone --recurse-submodules https://github.com/mx-wj/Silicium-Rothko.git
+git clone --recurse-submodules https://github.com/ChallengeThePeak/Silicium-Rothko.git
 git clone https://github.com/UniXNU/UniXNU.git
 git -C UniXNU checkout 67df14de69ae6f6ffc3480b30b70ce7667a3bd32
 
