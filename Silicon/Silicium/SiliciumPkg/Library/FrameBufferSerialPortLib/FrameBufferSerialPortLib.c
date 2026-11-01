@@ -80,6 +80,48 @@ PstoreWrite (
   MemoryFence ();
 }
 
+
+/**
+  Wipe the visible area with opaque black.
+
+  Two mistakes are fixed here. The old code cleared Width * Height bytes
+  contiguously, but the panel strides 1248 pixels per line for a 1220 pixel
+  panel, so a contiguous clear wipes the wrong pixels. And a plain zero fill
+  leaves the reserved byte at zero, which the inherited RGBA overlay treats as
+  fully transparent, so LK's splash would show through the "cleared" screen.
+**/
+STATIC
+VOID
+ClearFrameBufferOpaque (
+  VOID
+  )
+{
+  UINTN   Row;
+  UINTN   Col;
+  UINT32  *Pixels;
+
+  if ((mFbGeometry.Width == 0) || (mFbGeometry.Height == 0) ||
+      (mFbGeometry.PitchBytes < mFbGeometry.Width * FB_BPP))
+  {
+    return;
+  }
+
+  Pixels = (UINT32 *)(VOID *)mFbGeometry.Base;
+
+  for (Row = 0; Row < mFbGeometry.Height; Row++) {
+    for (Col = 0; Col < mFbGeometry.Width; Col++) {
+      Pixels[Col] = 0xFF000000U;
+    }
+
+    Pixels += mFbGeometry.PitchBytes / sizeof (UINT32);
+  }
+
+  WriteBackDataCacheRange (
+    (VOID *)mFbGeometry.Base,
+    (UINTN)mFbGeometry.PitchBytes * mFbGeometry.Height
+    );
+}
+
 VOID
 EFIAPI
 PstoreLogBegin (
@@ -132,7 +174,11 @@ DrawRow (
     // Go thru each Pixel
     for (UINT8 j = 0; j < FONT_WIDTH; j++) {
       // Set Pixel Color
-      UINT32 PixelColor = (Data & 1) ? 0xFFFFFFFF : 0x00000000;
+      //
+      // [k70u-fix 2026-11-02] LK leaves an RGBA overlay scanning the panel, so a
+      // zero reserved byte means fully transparent and LK's own splash shows
+      // through. Keep the background opaque, like the yunluo reference does.
+      UINT32 PixelColor = (Data & 1) ? 0xFFFFFFFF : 0xFF000000;
       
       // Draw Pixel Color
       Pixels = DrawPixel (Pixels, PixelColor, FontScale);
@@ -285,7 +331,7 @@ WriteFrameBuffer (
     if (Character == '\f') {
       // Form feed: clear the whole screen and start again at the top left, so a
       // message that matters (the hand-off to a kernel) fills the screen.
-      ZeroMem ((VOID *)mFbGeometry.Base, (UINTN)FB_PITCH * FB_HEIGHT);
+      ClearFrameBufferOpaque ();
       CurrentPosition->XPos = 0;
       CurrentPosition->YPos = 0;
     } else if (Character == '\n') {
@@ -375,10 +421,23 @@ LoadGeometry (
   // Handed-off Geometry, valid only once its Magic is set
   Handoff = (CONST volatile FB_HANDOFF *)(UINTN)(FbBase + FbLength - FB_HANDOFF_OFFSET);
   if (Handoff->Magic == FB_HANDOFF_MAGIC) {
-    mFbGeometry.Base       = (UINTN)Handoff->Base;
-    mFbGeometry.Width      = Handoff->Width;
-    mFbGeometry.Height     = Handoff->Height;
-    mFbGeometry.PitchBytes = Handoff->PitchBytes;
+    //
+    // [k70u-fix 2026-11-02] The record lives in DRAM that a previous boot (or
+    // the stock bootloader) left behind, so a stale or random value can look
+    // like a valid magic. Only accept a geometry that is self-consistent and
+    // fits the carveout, otherwise a bogus Width or Pitch would send the
+    // console walking far outside the frame buffer.
+    //
+    if ((Handoff->Width != 0) && (Handoff->Height != 0) &&
+        (Handoff->PitchBytes >= Handoff->Width * FB_BPP) &&
+        (Handoff->PitchBytes <= (16U * 1024U * 1024U)) &&
+        (Handoff->Base >= FbBase) && (Handoff->Base < FbBase + FbLength))
+    {
+      mFbGeometry.Base       = (UINTN)Handoff->Base;
+      mFbGeometry.Width      = Handoff->Width;
+      mFbGeometry.Height     = Handoff->Height;
+      mFbGeometry.PitchBytes = Handoff->PitchBytes;
+    }
   }
 }
 

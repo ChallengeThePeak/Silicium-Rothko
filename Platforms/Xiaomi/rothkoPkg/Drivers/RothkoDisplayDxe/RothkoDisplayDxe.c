@@ -37,6 +37,7 @@
 #include <Library/IoLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/MemoryMapHelperLib.h>
+#include <Library/FrameBufferHandoff.h>
 #include <Library/PcdLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 
@@ -718,9 +719,19 @@ Refresh (
   UINTN   Index;
   UINTN   Bytes;
 
-  if (!mRefreshActive || !mDirty) {
+  if (!mRefreshActive) {
     return;
   }
+
+  //
+  // [k70u-fix 2026-11-02] Submit on every tick, not only after a GOP blt.
+  // The frame buffer console in FrameBufferSerialPortLib draws the UEFI log
+  // straight into the frame buffer, and those writes never go through the
+  // GOP, so a dirty-only refresh keeps showing the last pushed frame and the
+  // log never reaches the panel. The yunluo reference behaves the same way:
+  // the panel keeps being refreshed while the log is written, which is why
+  // its early boot shows the text appearing line by line.
+  //
 
   //
   // Mirror the canonical buffer into any other layer LK left scanning, so a
@@ -920,6 +931,30 @@ Blt (
              Height,
              Delta
              );
+
+  //
+  // [k70u-fix 2026-11-02] GOP has no alpha contract, but LK's inherited overlay
+  // is an RGBA blend: a zero reserved byte is fully transparent and whatever LK
+  // left in the frame buffer shows through instead of the console text. Force
+  // the scanout opaque, the same way the yunluo reference does.
+  //
+  if (!EFI_ERROR (Status) && (BltOperation != EfiBltVideoToBltBuffer) &&
+      (Width != 0) && (Height != 0))
+  {
+    UINTN   Row;
+    UINTN   Col;
+    UINT32  *Pixels;
+
+    for (Row = 0; Row < Height; Row++) {
+      Pixels = (UINT32 *)(VOID *)(UINTN)(mMode.FrameBufferBase +
+               (UINT64)(DestinationY + Row) * mInfo.PixelsPerScanLine +
+               (UINT64)DestinationX);
+
+      for (Col = 0; Col < Width; Col++) {
+        Pixels[Col] |= 0xFF000000U;
+      }
+    }
+  }
 
   if (!EFI_ERROR (Status) && (BltOperation != EfiBltVideoToBltBuffer) &&
       (Width != 0) && (Height != 0))
@@ -1250,7 +1285,9 @@ StartRefresh (
     return Status;
   }
 
-  Status = gBS->SetTimer (mRefreshEvent, TimerPeriodic, 1000000ULL);
+  // [k70u-fix 2026-11-02] 200 ms: fast enough for the log to appear to
+  // scroll, slow enough not to spend the whole boot copying the frame.
+  Status = gBS->SetTimer (mRefreshEvent, TimerPeriodic, 200000ULL);
   if (EFI_ERROR (Status)) {
     gBS->CloseEvent (mRefreshEvent);
     gBS->CloseEvent (mExitEvent);
@@ -1394,6 +1431,31 @@ RothkoDisplayEntry (
   RothkoStage (14);
   ProbeScanouts ();
   DEBUG ((DEBUG_WARN, "ROTHKO: %u validated scanout layer(s)\n", mScanoutCount));
+
+  //
+  // [k70u-fix 2026-11-02] Publish the geometry that is really scanned out.
+  // The frame buffer console reads this record on every write and otherwise
+  // falls back to Width * BPP (4880), while the panel strides 4992 bytes, so
+  // every line would drift 28 pixels and the text would come out skewed.
+  //
+  if (mScanoutCount != 0)
+  {
+    FB_HANDOFF  *Handoff;
+
+    Handoff = (FB_HANDOFF *)(UINTN)(mFbBase + mFbSize - FB_HANDOFF_OFFSET);
+    Handoff->Width      = PANEL_WIDTH;
+    Handoff->Height     = PANEL_HEIGHT;
+    Handoff->PitchBytes = mScanoutPitch[0];
+    Handoff->Base       = mFbBase;
+    Handoff->Magic      = FB_HANDOFF_MAGIC;
+    MemoryFence ();
+
+    DEBUG ((
+      DEBUG_WARN,
+      "ROTHKO: published framebuffer geometry %ux%u pitch=%u base=%lx\n",
+      PANEL_WIDTH, PANEL_HEIGHT, mScanoutPitch[0], mFbBase
+      ));
+  }
 
   RothkoStage (15);
   Status = InstallGop (ImageHandle);

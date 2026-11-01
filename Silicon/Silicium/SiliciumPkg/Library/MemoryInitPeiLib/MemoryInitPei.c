@@ -10,6 +10,7 @@
 #include <Library/MemoryAllocationLib.h>
 #include <Library/MemoryMapLib.h>
 #include <Library/DebugLib.h>
+#include <Library/PcdLib.h>
 #include <Library/HobLib.h>
 
 VOID
@@ -214,6 +215,7 @@ MemoryPeim (
   }
 
   DEBUG ((EFI_D_WARN, "MMU: enabled\n"));
+
   if (EFI_ERROR (Status)) {
     DEBUG ((EFI_D_ERROR, "Failed to Configure MMU! Status = %r\n", Status));
     return Status;
