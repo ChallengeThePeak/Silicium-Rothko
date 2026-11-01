@@ -14,9 +14,6 @@
 !include SiliciumPkg/SiliciumPkg.dsc.inc
 
 [PcdsFixedAtBuild]
-!if $(TARGET) == DEBUG
-  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x8007EE4F
-!endif
   gArmTokenSpaceGuid.PcdSystemMemoryBase|0x40000000
   gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase|0x40600000
   gArmPlatformTokenSpaceGuid.PcdCPUCorePrimaryStackSize|0x40000
