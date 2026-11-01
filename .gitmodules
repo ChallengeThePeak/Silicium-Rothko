@@ -12,7 +12,7 @@
 	branch = release/202608
 [submodule "Mu_Basecore"]
 	path = Mu_Basecore
-	url = https://github.com/mx-wj/Silicium-Rothko.git
+	url = https://github.com/ChallengeThePeak/Silicium-Rothko.git
 	branch = basecore/rothko
 [submodule "Silicium-ACPI"]
 	path = Silicium-ACPI
