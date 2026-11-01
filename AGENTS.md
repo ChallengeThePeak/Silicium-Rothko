@@ -112,3 +112,8 @@ fastboot reboot
 ```
 
 同时给出两个镜像的 SHA-256，便于刷前核对。不要只给 boot，也不要把 adb 路徑写进命令行。
+
+## 检索工具（强制，2026-11-02）
+
+搜文件内容一律用 `rg`（ripgrep），**禁止 `grep` / `grep -r` 递归扫目录**；按文件名找用
+`rg --files` 或 Glob，不要全盘 `find`。WSL 内 `rg` 在 `/home/ubuntu/bin/rg`。
