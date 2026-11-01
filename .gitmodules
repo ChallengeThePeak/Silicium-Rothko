@@ -1,0 +1,3 @@
+[submodule "uefi-mtk-reference"]
+	path = uefi-mtk-reference
+	url = https://github.com/ghidgdsr/uefi-malachite.git
