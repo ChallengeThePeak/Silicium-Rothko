@@ -90,7 +90,7 @@ kernel_size 和有效异常现场，不能据此确认新版停点或否定已�
   `AGENTS.md`、`reports/`、`scripts/`、`.planning/`、`.workbuddy/`。
 - 自动备份：`scripts/auto-backup.sh` 执行 `git add -A` 后提交（提交信息 `auto: <时间戳>`），
   无改动直接跳过、不产生空提交；执行记录写在 `.git/auto-backup.log`（保留最后 200 行）。
-- 定时任务「K70U 工作区自动备份」每小时运行一次该脚本。只做本地提交，
-  **不做 `git push`**，也不删除任何文件。
+- **不要创建定时任务/自动化**：备份按需手动执行 `bash scripts/auto-backup.sh`，或由当前会话临时调用。
+  只做本地提交，**不做 `git push`**，也不删除任何文件。
 - 需要备份镜像或源码树时，不要改 `.gitignore` 往里塞二进制；用外部盘或
   `_quarantine/` 归档，并在报告里记录哈希。
