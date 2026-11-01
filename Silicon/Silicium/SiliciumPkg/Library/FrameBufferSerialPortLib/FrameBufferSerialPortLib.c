@@ -331,12 +331,23 @@ GetFrameBufferMemory (
   OUT EFI_PHYSICAL_ADDRESS *Base,
   OUT UINT64               *Length)
 {
-  EFI_MEMORY_REGION_DESCRIPTOR FbRegion;
+  //
+  // [k70u-fix 2026-11-02] LocateMemoryRegionByName() does not touch its output
+  // parameter when the region is absent, so an uninitialised FbRegion left stack
+  // garbage that was then used as the framebuffer base: the pixel writes and the
+  // DC-by-MVA flush went to an untranslated address and raised a synchronous
+  // exception. Zero it and honour the lookup status instead.
+  //
+  EFI_MEMORY_REGION_DESCRIPTOR FbRegion = { 0 };
 
   // Locate "Display Reserved" Memory Region
-  LocateMemoryRegionByName ("Display Reserved", &FbRegion);
-  LocateMemoryRegionByName ("Display_Reserved", &FbRegion);
-  if (!FbRegion.Address && !FbRegion.Length) {
+  if (EFI_ERROR (LocateMemoryRegionByName ("Display Reserved", &FbRegion)) &&
+      EFI_ERROR (LocateMemoryRegionByName ("Display_Reserved", &FbRegion)))
+  {
+    return EFI_NOT_FOUND;
+  }
+
+  if ((FbRegion.Address == 0) || (FbRegion.Length == 0)) {
     return EFI_NOT_FOUND;
   }
 
@@ -410,8 +421,22 @@ SerialPortWrite (
     ArmEnableInterrupts ();
   }
 
-  // Flush Frame Buffer
-  WriteBackInvalidateDataCacheRange ((VOID *)mFbGeometry.Base, (UINTN)FB_PITCH * FB_HEIGHT);
+  //
+  // [k70u-fix 2026-11-02] Clamp the flush to the mapped display region. A cache
+  // maintenance operation on an untranslated address traps, and doing it from the
+  // logger turns a single fault into the recursive exception seen on device.
+  //
+  if ((mFbGeometry.Base >= (UINTN)FbBase) &&
+      (mFbGeometry.Base < (UINTN)(FbBase + FbLength)))
+  {
+    UINTN FlushLength = (UINTN)mFbGeometry.PitchBytes * (UINTN)mFbGeometry.Height;
+
+    if ((FlushLength == 0) || (FlushLength > (UINTN)FbLength)) {
+      FlushLength = (UINTN)FbLength;
+    }
+
+    WriteBackInvalidateDataCacheRange ((VOID *)mFbGeometry.Base, FlushLength);
+  }
 
   return NumberOfBytes;
 }

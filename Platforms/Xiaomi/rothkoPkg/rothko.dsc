@@ -26,6 +26,12 @@
   gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemRetailModel|"rothko"
   gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemRetailSku|"ROTHKO"
   gSiliciumPkgTokenSpaceGuid.PcdSmbiosSystemBoardModel|"rothko"
+  #
+  # [k70u-fix 2026-11-02] BDS asserts at BmDriverHealth.c(553) because the FV has no
+  # SetupBrowserDxe, so gEfiFormBrowser2ProtocolGuid is absent. UEFI provides this
+  # documented switch: a zero PcdDriverHealthConfigureForm disables the check.
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdDriverHealthConfigureForm|{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
 
 [LibraryClasses]
   MemoryMapLib|rothkoPkg/Library/MemoryMapLib/MemoryMapLib.inf

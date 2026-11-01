@@ -3,6 +3,7 @@
   SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
+#include <Library/ArmLib.h>
 #include <Library/PcdLib.h>
 #include <Library/SortLib.h>
 #include <Library/ArmMmuLib.h>
@@ -149,6 +150,69 @@ MemoryPeim (
 
   // Configure MMU
   Status = ArmConfigureMmu (MemoryTable, &TranslationTableBase, &TranslationTableSize);
+  //
+  // [k70u-debug 2026-11-02] Record the translation regime actually programmed:
+  // the DXE pool allocator handed out 0x33FF60000 and the store raised an
+  // address size fault, which means the VA range does not reach that far.
+  //
+  DEBUG ((
+    DEBUG_ERROR,
+    "K70U-MMU: PAbits=%d T0SZ=0x%x TTBR0=0x%lx TCR=0x%lx regions=%d\n",
+    (UINT32)ArmGetPhysicalAddressBits (),
+    (UINT32)(ArmGetTCR () & 0x3F),
+    (UINT64)ArmGetTTBR0BaseAddress (),
+    (UINT64)ArmGetTCR (),
+    (UINT32)MemoryDescriptorCount
+    ));
+  //
+  // [k70u-debug 2026-11-02] Walk the just-installed tables for the address that
+  // raised the address size fault, and record the exception level and SCTLR.
+  //
+  DEBUG ((
+    DEBUG_ERROR,
+    "K70U-EL: CurrentEL=0x%lx SCTLR=0x%lx TTBR0=0x%lx\n",
+    (UINT64)ArmReadCurrentEL (),
+    (UINT64)ArmReadSctlr (),
+    (UINT64)ArmGetTTBR0BaseAddress ()
+    ));
+  {
+    UINT64  *Tbl = (UINT64 *)(UINTN)TranslationTableBase;
+    UINT64   Va  = 0x33FF60000ULL;
+    UINTN    Lvl;
+
+    for (Lvl = 0; Lvl < 4; Lvl++) {
+      UINTN   Idx;
+      UINT64  Desc;
+
+      if (Tbl == NULL) {
+        DEBUG ((DEBUG_ERROR, "K70U-PT: L%u table NULL\n", (UINT32)Lvl));
+        break;
+      }
+
+      Idx  = (UINTN)((Va >> (39 - (9 * Lvl))) & 0x1FF);
+      Desc = Tbl[Idx];
+      DEBUG ((
+        DEBUG_ERROR,
+        "K70U-PT: VA=0x%lx L%u[%u]=0x%lx\n",
+        Va,
+        (UINT32)Lvl,
+        (UINT32)Idx,
+        Desc
+        ));
+
+      if ((Desc & 0x3) == 0x3) {
+        break;
+      }
+
+      if ((Desc & 0x3) == 0x1) {
+        Tbl = (UINT64 *)(UINTN)(Desc & 0x0000FFFFFFFFF000ULL);
+      } else {
+        DEBUG ((DEBUG_ERROR, "K70U-PT: L%u invalid descriptor\n", (UINT32)Lvl));
+        break;
+      }
+    }
+  }
+
   DEBUG ((EFI_D_WARN, "MMU: enabled\n"));
   if (EFI_ERROR (Status)) {
     DEBUG ((EFI_D_ERROR, "Failed to Configure MMU! Status = %r\n", Status));
