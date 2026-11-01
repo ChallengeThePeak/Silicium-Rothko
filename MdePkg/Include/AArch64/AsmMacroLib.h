@@ -37,10 +37,10 @@
   Name:                                           ; \
   AARCH64_BTI(c)
 
-#define ASM_FUNC(Name)  _ASM_FUNC(ASM_PFX(Name), .text. ## Name)
+#define ASM_FUNC(Name)  _ASM_FUNC(ASM_PFX(Name), .text)
 
 #define ASM_FUNC_ALIGN(Name, Align)  \
-  _ASM_FUNC_ALIGN(ASM_PFX(Name), .text. ## Name, Align)
+  _ASM_FUNC_ALIGN(ASM_PFX(Name), .text, Align)
 
 #define MOV32(Reg, Val)                             \
   movz      Reg, ((Val) >> 16) & 0xffff, lsl #16  ; \

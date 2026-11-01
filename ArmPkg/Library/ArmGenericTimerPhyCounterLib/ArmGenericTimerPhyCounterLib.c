@@ -59,7 +59,14 @@ ArmGenericTimerGetTimerFreq (
   VOID
   )
 {
-  return ArmReadCntFrq ();
+  UINTN Freq;
+
+  Freq = ArmReadCntFrq ();
+  if (!Freq) {
+    Freq = FixedPcdGet64 (PcdTimerFreqOverwrite);
+  }
+
+  return Freq;
 }
 
 UINTN

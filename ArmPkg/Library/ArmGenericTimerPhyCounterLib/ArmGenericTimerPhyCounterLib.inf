@@ -22,7 +22,12 @@
 [Packages]
   MdePkg/MdePkg.dec
   ArmPkg/ArmPkg.dec
+  SiliciumPkg/SiliciumPkg.dec
 
 [LibraryClasses]
   ArmLib
   BaseLib
+  PcdLib
+
+[FixedPcd]
+  gSiliciumPkgTokenSpaceGuid.PcdTimerFreqOverwrite
