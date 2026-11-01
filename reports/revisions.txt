@@ -1,0 +1,34 @@
+# revisions.txt — rothko 工作区
+
+记录时间：2026-10-22
+
+## 仓库
+
+Mu-Silicium
+  remote : https://github.com/Project-Silicium/Mu-Silicium
+  path   : D:\漏洞\UNIXNU\适配K70U\src\Mu-Silicium
+  HEAD   : 42fe563791e51bf5500c2e470ed294ca0c94b97c
+  date   : 2026-10-21 08:26:51 +0200
+  note   : shallow clone; submodules Binaries/Common-Mu/Common-Mu_OEM_Sample/Mu_Basecore/
+           Silicium-ACPI/openssl 已初始化，Mu_Basecore 的嵌套测试子模块未拉取
+
+Xiaomi_Kernel_OpenSource (roTHKO)
+  remote : https://github.com/MiCode/Xiaomi_Kernel_OpenSource
+  branch : bsp-rothko-u-oss
+  path   : D:\漏洞\UNIXNU\适配K70U\src\Xiaomi_Kernel_OpenSource-rothko
+  HEAD   : 197c453d27da88f3b7b8fed7323ee6d15fc02066
+  note   : shallow + sparse checkout；该分支无 MTK BSP / mt6989 DTS
+
+uefi-sheng (read-only)
+  path   : D:\漏洞\UNIXNU\src\uefi-sheng
+  note   : 只复用 BootShim/BootShim.S
+
+uefi-yunluo (read-only reference)
+  path   : D:\漏洞\UNIXNU\src\uefi-yunluo
+  note   : 板级包结构参考；未复用任何 SoC 数值
+
+## 原厂镜像
+
+stock   : C:\Users\Administrator\Downloads\rothko_images_OS1.0.22.0.UNNCNXM_20240808.0000.00_14.0_cn_197c33cf17\rothko_images_OS1.0.22.0.UNNCNXM_14.0\images
+factory : I:\rothko_factory_images_FACTORY_ROTHKO_0820_debug_20240820_0000_00\rothko_factory_images_FACTORY-ROTHKO-0820_14.0\images
+preloader (factory): preloader_rothko.bin (+ .i64/.id0/.id1/.nam/.til)

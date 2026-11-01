@@ -1,0 +1,33 @@
+# 大体积二进制 / 生成物：不入库（用 _quarantine 或外部盘保存）
+src/
+work/
+bringup/
+_quarantine/
+logs/
+
+# 镜像与二进制
+*.img
+*.bin
+*.raw
+*.fd
+*.o
+*.ko
+*.zip
+*.7z
+*.tar
+*.gz
+*.xz
+
+# Python
+__pycache__/
+*.pyc
+
+# 编辑器/系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时
+*.tmp
+*.log
+!reports/*.log
