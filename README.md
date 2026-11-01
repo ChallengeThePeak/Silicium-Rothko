@@ -20,6 +20,12 @@ Other upstream dependencies retain their original submodule locations.
 git clone --recurse-submodules https://github.com/mx-wj/Silicium-Rothko.git
 ```
 
+## Build And Package
+
+See [the pstore boot build guide](BUILD_PSTORE_BOOT.md) (Chinese) for the
+WSL build, required UniXNU patch, v4/AVB packaging, log retrieval, and
+same-device firmware / `vendor_boot` compatibility limits.
+
 ## Saved Versions
 
 The `rothko-avb-v1` and `rothko-trace-v2` tags preserve the local rollback

@@ -1,0 +1,118 @@
+diff --git a/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c b/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c
+index 7d4def5..7d1bba0 100644
+--- a/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c
++++ b/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.c
+@@ -10,6 +10,7 @@
+ #include <Library/DebugLib.h>
+ #include <Library/FdtLib.h>
+ #include <Library/HobLib.h>
++#include <Library/PcdLib.h>
+ #include <Library/UefiBootServicesTableLib.h>
+ #include <Protocol/BlockIo.h>
+ #include <Protocol/DevicePath.h>
+@@ -142,6 +143,9 @@ PublishInitrd (
+   INT32       EndLength;
+   UINT64      Start;
+   UINT64      End;
++  UINT64      DiskOffset;
++  UINT64      DiskSize;
++  UINT64      InitrdSize;
+   EFI_HANDLE  Handle;
+ 
+   Chosen = FdtPathOffset (Fdt, "/chosen");
+@@ -161,12 +165,30 @@ PublishInitrd (
+ 
+   Start = ReadCells (StartProp, StartLength / 4);
+   End   = ReadCells (EndProp, EndLength / 4);
+-  if ((End <= Start) || (((End - Start) % RAM_BLOCK_SIZE) != 0)) {
+-    DEBUG ((DEBUG_ERROR, "UNIXNURAMDISK: initrd 0x%lx-0x%lx is not a whole number of sectors\n", Start, End));
++  if (End <= Start) {
++    DEBUG ((DEBUG_ERROR, "UNIXNURAMDISK: invalid initrd range 0x%lx-0x%lx\n", Start, End));
+     return;
+   }
+ 
+-  mRamBase                = (UINT8 *)(UINTN)Start;
++  InitrdSize = End - Start;
++  DiskOffset = FixedPcdGet64 (PcdUniXNURamDiskOffset);
++  DiskSize   = FixedPcdGet64 (PcdUniXNURamDiskSize);
++  if ((DiskOffset == 0) && (DiskSize == 0)) {
++    DiskSize = InitrdSize;
++  } else if ((DiskSize == 0) || (DiskOffset > InitrdSize) ||
++             (DiskSize > (InitrdSize - DiskOffset)))
++  {
++    DEBUG ((DEBUG_ERROR, "UNIXNURAMDISK: invalid payload offset 0x%lx size 0x%lx in initrd size 0x%lx\n",
++      DiskOffset, DiskSize, InitrdSize));
++    return;
++  }
++
++  if ((DiskSize == 0) || ((DiskSize % RAM_BLOCK_SIZE) != 0)) {
++    DEBUG ((DEBUG_ERROR, "UNIXNURAMDISK: payload size 0x%lx is not a whole number of sectors\n", DiskSize));
++    return;
++  }
++
++  mRamBase                = (UINT8 *)(UINTN)(Start + DiskOffset);
+   mMedia.MediaId          = 1;
+   mMedia.RemovableMedia   = FALSE;
+   mMedia.MediaPresent     = TRUE;
+@@ -175,7 +197,7 @@ PublishInitrd (
+   mMedia.WriteCaching     = FALSE;
+   mMedia.BlockSize        = RAM_BLOCK_SIZE;
+   mMedia.IoAlign          = 1;
+-  mMedia.LastBlock        = (End - Start) / RAM_BLOCK_SIZE - 1;
++  mMedia.LastBlock        = DiskSize / RAM_BLOCK_SIZE - 1;
+ 
+   Handle = NULL;
+   Status = gBS->InstallMultipleProtocolInterfaces (
+@@ -186,7 +208,8 @@ PublishInitrd (
+                   &mBlockIo,
+                   NULL
+                   );
+-  DEBUG ((DEBUG_ERROR, "UNIXNURAMDISK: initrd block device 0x%lx size 0x%lx %r\n", Start, End - Start, Status));
++  DEBUG ((DEBUG_ERROR, "UNIXNURAMDISK: initrd block device 0x%lx size 0x%lx %r\n",
++    (UINT64)(UINTN)mRamBase, DiskSize, Status));
+ }
+ 
+ EFI_STATUS
+diff --git a/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf b/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
+index f4dab2d..9eda16c 100644
+--- a/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
++++ b/package/UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
+@@ -11,6 +11,7 @@
+ 
+ [Packages]
+   MdePkg/MdePkg.dec
++  UniXNUPkg/UniXNUPkg.dec
+ 
+ [LibraryClasses]
+   BaseLib
+@@ -18,9 +19,14 @@
+   DebugLib
+   FdtLib
+   HobLib
++  PcdLib
+   UefiBootServicesTableLib
+   UefiDriverEntryPoint
+ 
++[FixedPcd]
++  gUniXNUPkgTokenSpaceGuid.PcdUniXNURamDiskOffset
++  gUniXNUPkgTokenSpaceGuid.PcdUniXNURamDiskSize
++
+ [Protocols]
+   gEfiBlockIoProtocolGuid                       ## PRODUCES
+   gEfiDevicePathProtocolGuid                    ## PRODUCES
+diff --git a/package/UniXNUPkg/UniXNUPkg.dec b/package/UniXNUPkg/UniXNUPkg.dec
+index bdf8d38..4d63399 100644
+--- a/package/UniXNUPkg/UniXNUPkg.dec
++++ b/package/UniXNUPkg/UniXNUPkg.dec
+@@ -50,3 +50,11 @@
+ 
+   ## ASCII model name reported by menu plugins that export device files.
+   gUniXNUPkgTokenSpaceGuid.PcdUniXNUDeviceModel|"UniXNU"|VOID*|0x00000004
++
++  ## Byte offset of a block-device payload within the FDT initrd range.
++  #  Zero with a zero size publishes the complete initrd for existing boards.
++  gUniXNUPkgTokenSpaceGuid.PcdUniXNURamDiskOffset|0|UINT64|0x00000005
++
++  ## Exact byte size of the block-device payload within the FDT initrd range.
++  #  Zero with a zero offset publishes the complete initrd for existing boards.
++  gUniXNUPkgTokenSpaceGuid.PcdUniXNURamDiskSize|0|UINT64|0x00000006
