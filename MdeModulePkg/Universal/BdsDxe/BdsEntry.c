@@ -971,26 +971,6 @@ BdsEntry (
   PERF_INMODULE_BEGIN ("PlatformBootManagerAfterConsole");
   PlatformBootManagerAfterConsole ();
   PERF_INMODULE_END ("PlatformBootManagerAfterConsole");
-
-  //
-  // [k70u-fix 2026-11-02] This platform registers no boot option yet, so BDS
-  // would idle forever and the device would never come back on its own. Warm
-  // reset after a short delay: the device returns to the bootloader by itself
-  // and, because a warm reset keeps DRAM, the pstore buffer written by SEC/DXE
-  // is still there for the next reader.
-  //
-  //
-  // [k70u-fix 2026-11-02] This platform registers no boot option, so BDS has
-  // nothing to boot. Park here instead of resetting: the watchdog that LK armed
-  // will expire on its own, which is the same reset path the earlier crashing
-  // runs took, and that path keeps DRAM (and therefore the pstore buffer)
-  // intact. Do NOT write the watchdog or call ResetSystem here: a PSCI reset
-  // behaves like a cold boot on this platform and wipes DRAM.
-  //
-  DEBUG ((DEBUG_ERROR, "K70U-BDS: no boot option registered, parking for the watchdog\n"));
-
-  CpuDeadLoop ();
-
   //
   // If any component set PcdTestKeyUsed to TRUE because use of a test key
   // was detected, then display a warning message on the debug log and the console

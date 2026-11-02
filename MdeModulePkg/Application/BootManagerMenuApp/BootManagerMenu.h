@@ -22,7 +22,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Protocol/BootLogo.h>
 
 #define TITLE_TOKEN_COUNT  1
-#define HELP_TOKEN_COUNT   3
+#define HELP_TOKEN_COUNT   2
 
 typedef struct _BOOT_MENU_SCREEN {
   UINTN    StartCol;
