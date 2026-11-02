@@ -63,3 +63,27 @@ Xiaomi Redmi K70 Ultra（rothko / MT6989）用上游 `ChallengeThePeak/Silicium-
   顶部花屏=两个扫描层叠加（GOP 内容与 LK 的 logo/UI 同时在扫）+ pitch 1248 与 1220 不匹配。
 - 推帧成功：mutex bank0 mod0=0x5080B735（含 DSI0 位），banks=7，
   `frame 1/2 submitted, dsi status=800A0004/800B0016` → DSI 命令模式触发链正常。
+
+## BDS 菜单与按键（2026-11-02）
+- **菜单出不来的真根因**：`BdsEntry.c` 里 `PlatformBootManagerAfterConsole()` 之后被插了
+  `CpuDeadLoop()`（当时为保 pstore 加的位置错了），导致后面整段 BootOrder 遍历、
+  `PlatformBootManagerPriorityBoot`、`BmRegisterBootManagerMenu` 全没跑。
+  那句 `K70U-BDS: no boot option registered` 是**无条件打印的假结论**，已删除。
+- 现在：`PlatformBootManagerPriorityBoot` 里若热键未按且 BootOrder 为空
+  （`EfiBootManagerGetLoadOptions(LoadOptionTypeBoot)` 返回 0），**直接进菜单**。
+  BootManagerMenu 是独立 load option，不在 BootOrder，所以 Count==0 精确表示"没东西可启动"。
+- 菜单 FFS GUID = `EEC25BDC-67F2-4D95-B1D5-F81B2039D11D` = `PcdBootManagerMenuFile`；
+  还需 `SetupBrowserDxe`（FormBrowser2）。
+- **rothko 按键实锤（DTBO fragment@19/20）**：
+  - 音量上 = **MTK GPIO 196（0xC4）**，`gpios=<&pio 0xC4 0x1>` = ACTIVE_LOW，
+    `pinkey pinmux=0xc400` 纯 GPIO + input-enable + bias-pull-up（LK 已配好，UEFI 只读）
+  - 音量下 = MT6363 `/home`（DT keycode 写的 0x73 与 volup 重复，疑模板残留，待 getevent 确认）
+  - 电源 = MT6363 `/power`（0x74）
+  - **没有** kpd 节点、**没有** i2c GPIO expander
+  - 对比 yunluo：音量上走 PMIC Home、音量下走 GPIO 66 —— **接法不同，不能照抄**
+- 链路：GpioDxe（需内存区名 **"Pinctrl"** 0x10005000）→ KeypadDeviceDxe →
+  KeypadDxe（SimpleTextIn/Ex）→ BootManagerLib/KeyCallback 注册 SCAN_UP。
+- **PMIC 未打通**：MT6989 用 SPMI/PMIF（DT `spmi@1cc04000`），树里 PmicWrapperDxe 是老 pwrap
+  布局（0x880 WACS2_CMD）；MT6358PmicDxe 的 TOPSTATUS=0x28 ≠ MT6363 的 **0x1E**。
+  从 `mtk-pmic-keys.ko` 的 `mt6363_regs` 解出：keys_regs 步长 0x10（press_reg/mask/release_reg/mask），
+  两键 press_mask = 0x1 / 0x3。要打通需新写 PMIF 訪問层；`InitPmicWrapper` init_done!=1 会 ASSERT 停机。
