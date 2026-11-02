@@ -86,9 +86,12 @@
   #
   # Boot Manager
   #
-  gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut|3
+  gEfiMdePkgTokenSpaceGuid.PcdPlatformBootTimeOut|10
   gEfiMdeModulePkgTokenSpaceGuid.PcdBootManagerMenuFile|{ 0xDC, 0x5B, 0xC2, 0xEE, 0xF2, 0x67, 0x95, 0x4D, 0xB1, 0xD5, 0xF8, 0x1B, 0x20, 0x39, 0xD1, 0x1D }
-  gEfiMdeModulePkgTokenSpaceGuid.PcdBootManagerInBootOrder|FALSE
+  # [k70u 2026-11-02] Put the Boot Manager menu INTO BootOrder so it comes up
+  # by itself after the timeout instead of requiring a hotkey (this platform has
+  # no key that can confirm inside the menu yet).
+  gEfiMdeModulePkgTokenSpaceGuid.PcdBootManagerInBootOrder|TRUE
   gEfiMdeModulePkgTokenSpaceGuid.PcdPlatformRecoverySupport|FALSE
 
   #

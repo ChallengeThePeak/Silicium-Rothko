@@ -242,10 +242,17 @@ MsBootOptionsLibRegisterDefaultBootOptions ()
   EFI_PLATFORM_BOOT_OPTION *BootOption;
   UINT8                     BootOptionCount;
 
-  // Register Default Boot Options
-  RegisterFvBootOption (&gMsBootPolicyFileGuid,            L"Internal Storage", (UINTN)-1, LOAD_OPTION_ACTIVE, (UINT8 *)"SSD", sizeof ("SSD"));
-  RegisterFvBootOption (&gMsBootPolicyFileGuid,            L"USB Storage",      (UINTN)-1, LOAD_OPTION_ACTIVE, (UINT8 *)"USB", sizeof ("USB"));
-  RegisterFvBootOption (FixedPcdGetPtr (PcdUfpLoaderFile), L"FFU Mode",         (UINTN)-1, LOAD_OPTION_HIDDEN, NULL, 0);
+  //
+  // [k70u 2026-11-02] MsBootPolicy and UFPLoader are not part of this build, so
+  // the generic defaults below fail (EFI_NOT_FOUND) and leave the Boot Manager
+  // menu with zero entries - it then paints an empty frame and Volume Up has
+  // nothing to move between. Register the application this platform ships.
+  //
+  STATIC EFI_GUID gK70uUniXNUFileGuid = {
+    0x9B665204, 0xA133, 0x47A2, { 0x93, 0x96, 0x9E, 0x2B, 0x37, 0x0A, 0x4E, 0x25 }
+  };
+
+  RegisterFvBootOption (&gK70uUniXNUFileGuid, L"UniXNU", (UINTN)-1, LOAD_OPTION_ACTIVE, NULL, 0);
 
   // Get Platform Boot Options
   GetPlatformBootOptions (&BootOption, &BootOptionCount);

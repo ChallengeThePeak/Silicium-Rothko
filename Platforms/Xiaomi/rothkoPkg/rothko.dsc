@@ -42,10 +42,33 @@
   gSiliciumPkgTokenSpaceGuid.PcdFrameBufferStride|1248
   gSiliciumPkgTokenSpaceGuid.PcdFrameBufferDelay|0
   #
+  # [k70u 2026-11-02] BootManagerMenuApp calls BdsSetConsoleMode(TRUE) before
+  # drawing its menu. With these four PCDs left at 0 it looks for a 0x0 GOP
+  # mode, fails, and restarts the whole console stack - the menu then draws into
+  # a dead device and the screen never shows it. 1220x2712 at 8x19 glyphs is
+  # 152x142 text cells.
+  #
+  #
   gEfiMdeModulePkgTokenSpaceGuid.PcdDriverHealthConfigureForm|{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
+
+[Packages]
+  MediaTekPkg/MediaTekPkg.dec
+
+[PcdsPatchableInModule]
+  #
+  # BootManagerMenuApp 在画菜单前调用 BdsSetConsoleMode(TRUE)，会按这四个 PCD
+  # 去找 GOP 模式；留 0 会走到“重启整个控制台驱动”的分支，菜单画到死设备上。
+  # 面板 1220x2712，字形 8x19，文本模式即 152x142。
+  #
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetupVideoHorizontalResolution|1220
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetupVideoVerticalResolution|2712
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetupConOutColumn|152
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSetupConOutRow|142
 
 [LibraryClasses]
   MemoryMapLib|rothkoPkg/Library/MemoryMapLib/MemoryMapLib.inf
+  GpioImplLib|rothkoPkg/Library/GpioImplLib/GpioImplLib.inf
+  KeypadDeviceLib|rothkoPkg/Library/KeypadDeviceLib/KeypadDeviceLib.inf
   UniXNULib|UniXNUPkg/Library/UniXNULib/UniXNULib.inf
 
 [BuildOptions]
@@ -62,5 +85,14 @@
   # generic SimpleFbDxe stays excluded via USE_CUSTOM_DISPLAY_DRIVER = 1.
   #
   rothkoPkg/Drivers/RothkoDisplayDxe/RothkoDisplayDxe.inf
+  #
+  # [k70u 2026-11-02] Volume Up. GpioDxe publishes the MediaTek GPIO protocol
+  # (Volume Up = GPIO 196 per the stock DTBO), KeypadDeviceDxe wraps it into the
+  # keypad protocol and KeypadDxe turns that into SimpleTextIn/SimpleTextInputEx,
+  # which is what BootManagerLib registers the menu hotkey (SCAN_UP) against.
+  #
+  MediaTekPkg/Drivers/GpioDxe/GpioDxe.inf
+  SiliciumPkg/Drivers/KeypadDeviceDxe/KeypadDeviceDxe.inf
+  SiliciumPkg/Drivers/KeypadDxe/KeypadDxe.inf
 
 !include rothkoPkg/UniXNUComponents.dsc.inc

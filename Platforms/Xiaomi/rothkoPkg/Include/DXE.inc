@@ -29,4 +29,20 @@ INF MdeModulePkg/Universal/ResetSystemRuntimeDxe/ResetSystemRuntimeDxe.inf
 INF UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
 INF UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
 INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
+#
+# [k70u-fix 2026-11-02] The graphical boot manager. BDS looks the menu up by
+# GUID through PcdBootManagerMenuFile, and that GUID is this module's
+# FILE_GUID (EEC25BDC-67F2-4D95-B1D5-F81B2039D11D), so putting the INF in
+# the FV is what makes the menu appear. SetupBrowserDxe provides the
+# FormBrowser2 protocol the menu needs.
+#
+INF MdeModulePkg/Application/BootManagerMenuApp/BootManagerMenuApp.inf
+INF MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
+#
+# [k70u 2026-11-02] Keys: GPIO -> keypad protocol -> SimpleTextInputEx.
+# Volume Up (GPIO 196) is what opens the Boot Manager menu.
+#
+INF MediaTekPkg/Drivers/GpioDxe/GpioDxe.inf
+INF SiliciumPkg/Drivers/KeypadDeviceDxe/KeypadDeviceDxe.inf
+INF SiliciumPkg/Drivers/KeypadDxe/KeypadDxe.inf
 INF UniXNUPkg/Application/UniXNU/UniXNU.inf

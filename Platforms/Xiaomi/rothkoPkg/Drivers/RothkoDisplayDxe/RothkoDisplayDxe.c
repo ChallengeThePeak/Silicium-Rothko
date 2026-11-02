@@ -523,6 +523,15 @@ ProbeScanouts (
         Address |= ((UINT64)(MmioRead32 (Base + OVL_ADDR_MSB (Layer)) & 0xFU) << 32);
         Pitch    = LayerPitchBytes (Base, Layer);
 
+        //
+        // [k70u 2026-11-02] L_CON_BTSW deliberately NOT enabled.
+        //
+        // The Blt alpha post-pass forces the top byte to 0xFF. BTSW reverses the
+        // entire 32-bit word, which would move that 0xFF into the red channel
+        // (0xFF000000 -> 0x000000FF = red and fully transparent). Red/blue order
+        // is irrelevant for the boot menu, which is black/white/grey, so leave
+        // the LK setting alone.
+        //
         CollectScanout (
           Address,
           Pitch,
@@ -692,11 +701,18 @@ PushFrame (
   )
 {
   //
-  // Never wait for or restart a transfer that is still running.
+  // [k70u 2026-11-02] Do NOT gate submission on DSI_BUSY.
   //
-  if (MmioRead32 (DSI0_BASE + DSI_INTSTA) & DSI_BUSY) {
-    return FALSE;
-  }
+  // INTSTA bit31 reads back set right after the second frame on this panel and
+  // never clears, so every later frame was dropped at this point: the Boot
+  // Manager menu had already been drawn into the frame buffer but never reached
+  // the panel, which is why the screen froze on the second pushed frame while
+  // the firmware kept running normally.
+  //
+  // The vendor mtk_dsi_start() writes 0 then 1 unconditionally - that is also
+  // what LK does while it displays the boot logo on this very panel - so follow
+  // it instead of second-guessing the hardware status bit.
+  //
 
   //
   // Vendor mtk_dsi_start(): 0 -> 1, and leave it at 1.
@@ -786,6 +802,21 @@ Refresh (
 
   if (!PushFrame ()) {
     return;
+  }
+
+  //
+  // [k70u 2026-11-02] Every 25 ticks (5 s) report that frames are still going
+  // out, plus the DSI status. Without this the log goes silent after
+  // "refresh enabled" and a stalled push looks identical to a working one.
+  //
+  mRefreshCount++;
+  if ((mRefreshCount % 25) == 0) {
+    DEBUG ((
+      DEBUG_WARN,
+      "ROTHKO: refresh %u frames, dsi status=%08x\n",
+      mRefreshCount,
+      MmioRead32 (DSI0_BASE + DSI_INTSTA)
+      ));
   }
 
   mDirty = FALSE;
@@ -946,9 +977,16 @@ Blt (
     UINT32  *Pixels;
 
     for (Row = 0; Row < Height; Row++) {
+      //
+      // [k70u 2026-11-02] FrameBufferBase is a byte address and Pixels is a
+      // UINT32*, so both the row stride and the column offset must be scaled by
+      // sizeof (UINT32). Without that the whole pass lands at a quarter of the
+      // intended height and scribbles over the upper part of the panel - which
+      // is exactly the broken coloured strip seen at the top of the screen.
+      //
       Pixels = (UINT32 *)(VOID *)(UINTN)(mMode.FrameBufferBase +
-               (UINT64)(DestinationY + Row) * mInfo.PixelsPerScanLine +
-               (UINT64)DestinationX);
+               (UINT64)(DestinationY + Row) * mInfo.PixelsPerScanLine * sizeof (UINT32) +
+               (UINT64)DestinationX * sizeof (UINT32));
 
       for (Col = 0; Col < Width; Col++) {
         Pixels[Col] |= 0xFF000000U;
@@ -1455,6 +1493,32 @@ RothkoDisplayEntry (
       "ROTHKO: published framebuffer geometry %ux%u pitch=%u base=%lx\n",
       PANEL_WIDTH, PANEL_HEIGHT, mScanoutPitch[0], mFbBase
       ));
+
+    //
+    // [k70u 2026-11-02] Wipe every scanout layer with the pitch the OVL really
+    // scans. Everything drawn so far went through PitchBytes = Width * 4
+    // (4880) because the handoff record above did not exist yet, and the panel
+    // scans mScanoutPitch[0] (4992) - so those rows drifted 112 bytes further
+    // left each line and left patches of LK's green boot splash showing between
+    // them. Clearing here, now that the true pitch is known, gives the panel a
+    // known starting state.
+    //
+    for (UINTN Layer = 0; Layer < mScanoutCount; Layer++) {
+      UINT8 *LayerBase  = (UINT8 *)(UINTN)mScanouts[Layer];
+      UINTN  LayerPitch = mScanoutPitch[Layer];
+
+      for (UINTN Row = 0; Row < PANEL_HEIGHT; Row++) {
+        SetMem32 (LayerBase + Row * LayerPitch, PANEL_WIDTH * sizeof (UINT32), 0xFF000000U);
+      }
+
+      WriteBackDataCacheRange (LayerBase, LayerPitch * PANEL_HEIGHT);
+    }
+
+    DEBUG ((
+      DEBUG_WARN,
+      "ROTHKO: cleared %u scanout layer(s) with the real pitch\n",
+      mScanoutCount
+      ));
   }
 
   RothkoStage (15);
@@ -1502,7 +1566,7 @@ RothkoDisplayEntry (
     for (Y = 0; Y < PANEL_HEIGHT; Y++) {
       Row = (UINT32 *)(UINTN)(mFbBase + (UINT64)Y * Pitch * sizeof (UINT32));
       for (X = 0; X < PANEL_WIDTH; X++) {
-        Row[X] = 0xFF102030U;   // opaque dark blue
+        Row[X] = 0xFF000000U;   // [k70u] opaque black, was 0xFF102030 diagnostic blue
       }
     }
 

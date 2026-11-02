@@ -10,6 +10,7 @@
 #include <Library/AcpiTableUpdateLib.h>
 #include <Library/DeviceBootManagerLib.h>
 #include <Library/PlatformBootManagerLib.h>
+#include <Library/UefiBootManagerLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/SecureBootHandlerLib.h>
@@ -112,6 +113,7 @@ PlatformBootManagerAfterConsole ()
 
   // Register Key Callback
   Status = RegisterKeyCallback ((EFI_DEVICE_PATH_PROTOCOL *)&KeypadDevicePath);
+  DEBUG ((DEBUG_ERROR, "K70U-BDS: RegisterKeyCallback -> %r\n", Status));
   if (!EFI_ERROR (Status) && GopProtocol != NULL) {
     // Set Screen Resolution
     UINT32 ScreenWidth  = GopProtocol->Mode->Info->HorizontalResolution;
@@ -145,15 +147,42 @@ VOID
 EFIAPI
 PlatformBootManagerPriorityBoot (IN OUT UINT16 **BootNext)
 {
-  EFI_STATUS                   Status;
-  EFI_BOOT_MANAGER_LOAD_OPTION LoadOption;
-  BOOLEAN                      BootManagerFlag;
+  EFI_STATUS                    Status;
+  EFI_BOOT_MANAGER_LOAD_OPTION  LoadOption;
+  BOOLEAN                       BootManagerFlag;
+  EFI_BOOT_MANAGER_LOAD_OPTION *BootOptions;
+  UINTN                         BootOptionCount;
 
   // Unregister Key Callback
   UnregisterKeyCallback ();
 
   // Get Boot Manager Flag
   BootManagerFlag = EnterBootManager ();
+  DEBUG ((DEBUG_ERROR, "K70U-BDS: EnterBootManager = %u\n", BootManagerFlag));
+  if (BootManagerFlag == FALSE) {
+    //
+    // [k70u 2026-11-02] No hotkey was pressed. If the BootOrder is empty there
+    // is nothing to boot either, so enter the Boot Manager menu anyway: the
+    // menu is the only thing that can be shown to the user on this platform
+    // (no OS installed yet) and it keeps the display and the keyboard alive
+    // instead of parking BDS in a dead loop.
+    //
+    // Note that the Boot Manager menu load option itself is NOT part of the
+    // BootOrder, it is a separate load option, so an empty BootOrder here
+    // really means "nothing to boot".
+    //
+    BootOptionCount = 0;
+    BootOptions     = EfiBootManagerGetLoadOptions (&BootOptionCount, LoadOptionTypeBoot);
+    if (BootOptions != NULL) {
+      EfiBootManagerFreeLoadOptions (BootOptions, BootOptionCount);
+    }
+
+    if (BootOptionCount == 0) {
+      DEBUG ((DEBUG_ERROR, "K70U-BDS: BootOrder is empty, entering Boot Manager menu\n"));
+      BootManagerFlag = TRUE;
+    }
+  }
+
   if (BootManagerFlag == FALSE) {
     return;
   }

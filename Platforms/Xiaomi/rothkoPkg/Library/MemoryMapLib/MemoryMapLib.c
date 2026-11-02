@@ -89,6 +89,13 @@ STATIC EFI_MEMORY_REGION_DESCRIPTOR gMemoryDescriptor[] = {
   {"Watchdog",        0x1C00B000, 0x00001000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
   {"GIC Redistributors",0x0C440000, 0x00200000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
   //
+  // [k70u 2026-11-02] MT6989 pinctrl / GPIO block. Volume Up on rothko is
+  // GPIO 196 (0xC4, active low) per the stock DTBO fragment@19 /volup-key,
+  // and GpioDxe finds this window by the name "Pinctrl". DT node
+  // /pinctrl@10005000, reg[0] "gpio" = 0x10005000 + 0x1000.
+  //
+  {"Pinctrl", 0x10005000, 0x1000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  //
   // [k70u-fix 2026-11-02] Display plumbing for RothkoDisplayDxe.
   // The MMIO windows below are the ones the driver probes (MMSYS, the two
   // MUTEX banks, OVLSYS0/1, DISPSYS1, DSC0, DSI0) and were validated on

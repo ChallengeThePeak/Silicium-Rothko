@@ -1,0 +1,15 @@
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = GpioImplLib
+  FILE_GUID                      = 3F9A6C41-8E27-4D53-A0B9-6C1D4E72F5A8
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = GpioImplLib
+
+[Sources]
+  GpioImplLib.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MediaTekPkg/MediaTekPkg.dec
+  SiliciumPkg/SiliciumPkg.dec
