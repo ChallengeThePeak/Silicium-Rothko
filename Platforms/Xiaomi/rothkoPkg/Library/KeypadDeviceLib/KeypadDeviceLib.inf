@@ -19,8 +19,8 @@
   BaseMemoryLib
   DebugLib
   IoLib
+  TimerLib
   MemoryMapHelperLib
   UefiBootServicesTableLib
 
-[Protocols]
-  gMediaTekPmicProtocolGuid
+

@@ -16,6 +16,10 @@ INF MdeModulePkg/Universal/SecurityStubDxe/SecurityStubDxe.inf
 INF MdeModulePkg/Universal/WatchdogTimerDxe/WatchdogTimer.inf
 INF MdeModulePkg/Universal/CapsuleRuntimeDxe/CapsuleRuntimeDxe.inf
 INF MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
+  INF rothkoPkg/Drivers/MtkUfsDxe/MtkUfsDxe.inf
+INF MdeModulePkg/Bus/Ufs/UfsPassThruDxe/UfsPassThruDxe.inf
+INF MdeModulePkg/Bus/Scsi/ScsiBusDxe/ScsiBusDxe.inf
+INF MdeModulePkg/Bus/Scsi/ScsiDiskDxe/ScsiDiskDxe.inf
 INF MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
 INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
 INF FatPkg/EnhancedFatDxe/Fat.inf
@@ -28,6 +32,7 @@ INF MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
 INF MdeModulePkg/Universal/ResetSystemRuntimeDxe/ResetSystemRuntimeDxe.inf
 INF UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
 INF UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
+INF UniXNUPkg/Driver/DarwinBoot/DarwinBoot.inf
 INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
 #
 # [k70u-fix 2026-11-02] The graphical boot manager. BDS looks the menu up by
@@ -43,6 +48,8 @@ INF MdeModulePkg/Universal/SetupBrowserDxe/SetupBrowserDxe.inf
 # Volume Up (GPIO 196) is what opens the Boot Manager menu.
 #
 INF MediaTekPkg/Drivers/GpioDxe/GpioDxe.inf
+INF rothkoPkg/Drivers/RothkoWatchdogDxe/RothkoWatchdogDxe.inf
+INF rothkoPkg/Drivers/RothkoHighMemDxe/RothkoHighMemDxe.inf
 INF SiliciumPkg/Drivers/KeypadDeviceDxe/KeypadDeviceDxe.inf
 INF SiliciumPkg/Drivers/KeypadDxe/KeypadDxe.inf
 INF UniXNUPkg/Application/UniXNU/UniXNU.inf

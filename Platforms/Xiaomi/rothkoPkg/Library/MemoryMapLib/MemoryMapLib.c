@@ -35,8 +35,26 @@ STATIC EFI_MEMORY_REGION_DESCRIPTOR gMemoryDescriptor[] = {
   {"Free 01", 0x48180000, 0x00281000, AddMem, SYS_MEM, SYS_MEM_TESTED, Conv, WRITE_BACK_XN},
   {"Free 02", 0x48402000, 0x003FE000, AddMem, SYS_MEM, SYS_MEM_TESTED, Conv, WRITE_BACK_XN},
   {"Free 03a",0x48A00000, 0x1E500000, AddMem, SYS_MEM, SYS_MEM_TESTED, Conv, WRITE_BACK_XN},
-  {"Incoming Initrd",0x66F00000, 0x037D4000, AddMem, SYS_MEM, SYS_MEM_TESTED, BsData, WRITE_BACK_XN},
-  {"Free 03b",0x6A6D4000, 0x0392A000, AddMem, SYS_MEM, SYS_MEM_TESTED, Conv, WRITE_BACK_XN},
+  //
+  // [k70u 2026-11-03] Kernel hand-off carrier.  LK concatenates the vendor
+  // ramdisk in front of the init_boot ramdisk here, and this build puts the
+  // 56 MiB UniXNU payload volume in the vendor ramdisk slot, so the range
+  // is widened from 0x037D4000 to a full 64 MiB.  UniXNURamDiskDxe
+  // publishes the payload slice of it as a block device.
+  //
+  //
+  // [k70u 2026-11-04] The envelope is now vendor ramdisk (~52 MiB) plus the
+  // boot ramdisk that carries the 56 MiB UniXNU payload volume plus the
+  // init_boot ramdisk, so 113 MiB are reserved up to the next LK mblock gap.
+  //
+  //
+  // [k70u 2026-11-04] Reserved, not BsData.  The payload volume lives in this
+  // range and the firmware was free to allocate these pages and zero them:
+  // UniXNURamDiskDxe read the FAT directory entry correctly (size 241) while
+  // the file cluster came back as all zeros.
+  //
+  {"Incoming Initrd",0x66F00000, 0x07100000, AddMem, MEM_RES, SYS_MEM_TESTED, Reserv, WRITE_BACK_XN},
+  // [k70u 2026-11-04] Free 03b now lives inside the widened initrd reservation.
   {"Free 04", 0x6FFFF000, 0x0A001000, AddMem, SYS_MEM, SYS_MEM_TESTED, Conv, WRITE_BACK_XN},
   {"Free 05", 0x7B930000, 0x016D0000, AddMem, SYS_MEM, SYS_MEM_TESTED, Conv, WRITE_BACK_XN},
   {"Free 06", 0x7E800000, 0x00800000, AddMem, SYS_MEM, SYS_MEM_TESTED, Conv, WRITE_BACK_XN},
@@ -74,6 +92,13 @@ STATIC EFI_MEMORY_REGION_DESCRIPTOR gMemoryDescriptor[] = {
   // region inside the range the firmware demonstrably reaches.
   // [k70u-3g 2026-11-02] held back for the top-region experiment
 //  {"Free 28", 0xFFFFF000, 0x00001000, AddMem, SYS_MEM, SYS_MEM_TESTED, Conv, WRITE_BACK_XN},
+  //
+  // [k70u 2026-11-04] Above 4 GiB, DISABLED again.  Mapping the four regions
+  // /proc/iomem reports (4.25 + 4 + 11.2 + 0.8 GiB) made the firmware fault, so
+  // the old "[k70u-lo4g]" warning was right: this build cannot reach them, most
+  // likely because the DXE translation tables only cover the low range.
+  // DarwinBoot copes by halving its window instead (see AllocateWindow).
+  //
   // [k70u-lo4g 2026-11-02] Above 4 GiB, temporarily excluded:
   //{"Free 29", 0x1C0000000, 0x17D600000, AddMem, SYS_MEM, SYS_MEM_TESTED, Conv, WRITE_BACK_XN},
   // [k70u-lo4g 2026-11-02] Above 4 GiB, temporarily excluded:
@@ -96,6 +121,14 @@ STATIC EFI_MEMORY_REGION_DESCRIPTOR gMemoryDescriptor[] = {
   //
   {"Pinctrl", 0x10005000, 0x1000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
   //
+  // [k70u 2026-11-02] SPMI PMIF controller (DT spmi@1cc04000, reg-names "pmif").
+  // Register 0x070 bit0 is the power-key event flag: it goes 0 -> 1 when the key
+  // is pressed and clears itself shortly after. Reading it is enough to detect
+  // the power key, so no SPMI transaction is needed (MT6989's PMIF command
+  // offsets are computed at runtime, unlike the old pwrap window this tree ships).
+  //
+  {"PMIF", 0x1CC04000, 0x1000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  //
   // [k70u-fix 2026-11-02] Display plumbing for RothkoDisplayDxe.
   // The MMIO windows below are the ones the driver probes (MMSYS, the two
   // MUTEX banks, OVLSYS0/1, DISPSYS1, DSC0, DSI0) and were validated on
@@ -112,6 +145,24 @@ STATIC EFI_MEMORY_REGION_DESCRIPTOR gMemoryDescriptor[] = {
   {"Display OVLSYS0", 0x14400000, 0x10000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
   {"Display OVLSYS1", 0x14600000, 0x10000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
   {"MIPI TX0", 0x11E90000, 0x1000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  //
+  // [k70u 2026-11-02] UFS host controller windows, taken from the stock device
+  // tree. MtkUfsDxe needs all four: the PHY and the HCI for the transport, plus
+  // TOPCKGEN and INFRACFG_AO because the driver gates the UFS clocks itself.
+  //
+  // Without these the very first register write (INFRA_AO2_CG_CLR at
+  // 0x100010a8) takes a translation fault and the driver dies with
+  // "Data abort: Translation fault, third level".
+  //
+  {"TOPCKGEN", 0x10000000, 0x1000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  {"INFRACFG AO", 0x10001000, 0x1000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  {"UFS PHY", 0x112A0000, 0x10000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  // 0x2a00 is the DT window size but is not page aligned, so the MMU
+  // refuses it ("RegionStart ... are not page aligned"). Map 0x3000 and keep
+  // the driver-side bound at 0x2a00.
+  {"UFS HCI", 0x112B0000, 0x3000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  {"UFS AO", 0x112B8000, 0x1000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
+  {"UFS PDN", 0x112BB000, 0x1000, AddDev, MMAP_IO, UNCACHEABLE, MmIO, NS_DEVICE},
   {"Display Reserved", 0xFD91F000, 0x26E0000, AddMem, MEM_RES, SYS_MEM_TESTED, Reserv, WRITE_THROUGH},
 
 };

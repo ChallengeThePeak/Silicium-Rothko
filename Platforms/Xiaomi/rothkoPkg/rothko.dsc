@@ -70,6 +70,7 @@
   GpioImplLib|rothkoPkg/Library/GpioImplLib/GpioImplLib.inf
   KeypadDeviceLib|rothkoPkg/Library/KeypadDeviceLib/KeypadDeviceLib.inf
   UniXNULib|UniXNUPkg/Library/UniXNULib/UniXNULib.inf
+  UefiScsiLib|MdePkg/Library/UefiScsiLib/UefiScsiLib.inf
 
 [BuildOptions]
   CLANGDWARF:*_*_*_CC_FLAGS = -fno-stack-protector
@@ -86,12 +87,29 @@
   #
   rothkoPkg/Drivers/RothkoDisplayDxe/RothkoDisplayDxe.inf
   #
+  # [k70u 2026-11-02] UFS host controller. Ported from the yunluo (MT6789)
+  # board package; the HCI/PHY addresses were re-derived from this board's
+  # device tree (UFSHCI 0x112b0000/0x2a00, UFS PHY 0x112a0000). It is what
+  # lets the firmware enumerate UFS LU2 and find the cust volume.
+  #
+  rothkoPkg/Drivers/MtkUfsDxe/MtkUfsDxe.inf
+  #
+  # [k70u 2026-11-02] UFS storage stack, ported from the yunluo board package.
+  # MtkUfsDxe provides the UFS host controller; these three turn it into a
+  # BlockIo so PartitionDxe and Fat.efi can expose the cust volume.
+  #
+  MdeModulePkg/Bus/Ufs/UfsPassThruDxe/UfsPassThruDxe.inf
+  MdeModulePkg/Bus/Scsi/ScsiBusDxe/ScsiBusDxe.inf
+  MdeModulePkg/Bus/Scsi/ScsiDiskDxe/ScsiDiskDxe.inf
+  #
   # [k70u 2026-11-02] Volume Up. GpioDxe publishes the MediaTek GPIO protocol
   # (Volume Up = GPIO 196 per the stock DTBO), KeypadDeviceDxe wraps it into the
   # keypad protocol and KeypadDxe turns that into SimpleTextIn/SimpleTextInputEx,
   # which is what BootManagerLib registers the menu hotkey (SCAN_UP) against.
   #
   MediaTekPkg/Drivers/GpioDxe/GpioDxe.inf
+  rothkoPkg/Drivers/RothkoWatchdogDxe/RothkoWatchdogDxe.inf
+  rothkoPkg/Drivers/RothkoHighMemDxe/RothkoHighMemDxe.inf
   SiliciumPkg/Drivers/KeypadDeviceDxe/KeypadDeviceDxe.inf
   SiliciumPkg/Drivers/KeypadDxe/KeypadDxe.inf
 

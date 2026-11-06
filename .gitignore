@@ -9,3 +9,8 @@ BootShim.elf
 
 Mu-*.*
 *:Zone.Identifier
+*.bak
+*.before-*
+*.r4-backup-*
+*.orig
+*.rej

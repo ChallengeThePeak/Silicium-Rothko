@@ -810,14 +810,10 @@ Refresh (
   // "refresh enabled" and a stalled push looks identical to a working one.
   //
   mRefreshCount++;
-  if ((mRefreshCount % 25) == 0) {
-    DEBUG ((
-      DEBUG_WARN,
-      "ROTHKO: refresh %u frames, dsi status=%08x\n",
-      mRefreshCount,
-      MmioRead32 (DSI0_BASE + DSI_INTSTA)
-      ));
-  }
+  //
+  // [k70u 2026-11-04] The 5 s "refresh N frames" heartbeat is gone: bring-up is
+  // finished and the line only adds noise to a log that is now read on screen.
+  //
 
   mDirty = FALSE;
   mRefreshCount++;

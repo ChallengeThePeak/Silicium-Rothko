@@ -1,10 +1,13 @@
 #
 # Include from the Rothko platform DSC.
-# Offset is the normal vendor-ramdisk prefix in the v4 LK initrd envelope.
-# Set the exact sector-aligned FAT image size when the payload image is built.
+#
+# [k70u 2026-11-04] The payload volume is located at run time, not by a fixed
+# offset: LK assembles the initrd envelope from the vendor ramdisk followed by
+# the init_boot ramdisk, and the stock vendor ramdisk is ~52 MiB of Android
+# payload, so the volume we want never starts at a stable offset.  A zero size
+# tells UniXNURamDiskDxe to scan for the FAT32 VBR and take the length from that
+# volume's own BPB.  Set both to non-zero to pin a slice explicitly instead.
 #
 [PcdsFixedAtBuild]
-# [build-fix 2026-11-02] 该 PCD 未在任何 DEC 中声明，且无消费者，上游此处不一致；暂时注释
-#gUniXNUPkgTokenSpaceGuid.PcdUniXNURamDiskOffset|0x02719743
-# [build-fix 2026-11-02] 该 PCD 未在任何 DEC 中声明，且无消费者，上游此处不一致；暂时注释
-#gUniXNUPkgTokenSpaceGuid.PcdUniXNURamDiskSize|0x00100000
+  gUniXNUPkgTokenSpaceGuid.PcdUniXNURamDiskOffset|0x00000000
+  gUniXNUPkgTokenSpaceGuid.PcdUniXNURamDiskSize|0x00000000
