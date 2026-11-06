@@ -85,7 +85,7 @@ they are proposed upstream.
 Initialize the firmware source and submodules:
 
 ```sh
-git clone --recursive git@github.com:ChallengeThePeak/Silicium-Rothko.git
+git clone --recursive git@github.com:ChallengeThePeak/Silicium-Rothko.git uefi-rothko
 cd uefi-rothko
 git submodule update --init --recursive
 ```
@@ -104,7 +104,7 @@ Create the link after cloning both repositories:
 ```sh
 mkdir -p rothko-build
 cd rothko-build
-git clone --recursive git@github.com:ChallengeThePeak/Silicium-Rothko.git
+git clone --recursive git@github.com:ChallengeThePeak/Silicium-Rothko.git uefi-rothko
 git clone git@github.com:woaphone/UniXNU-rothko.git
 ln -s ../UniXNU-rothko UniXNU
 cd uefi-rothko
