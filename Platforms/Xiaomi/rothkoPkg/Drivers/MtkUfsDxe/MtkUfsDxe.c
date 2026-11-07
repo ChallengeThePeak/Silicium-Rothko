@@ -45,10 +45,8 @@
 // this firmware aborts with a security-style SError (FAR=0, EC 0x2F ISS 0x011),
 // even though the window is mapped as UNCACHEABLE.  The bootloader already
 // powered the PHY up; leave it alone until that window access is understood.
-// [k70u 2026-11-03] EL2 build: PHY power-on ON.  At EL1 the very first read
-// of 0x112a008c aborted with a security-style SError (FAR=0) even though the
-// window is mapped UNCACHEABLE; at EL2 the access is decided by the ATF
-// Stage-2 translation, which may well expose it.
+// Historical EL2/Stage-2 permission explanations were withdrawn. An SError
+// alone does not establish the applicable translation or security policy.
 // [k70u 2026-11-03] PHY power-on ON again, but every PHY MMIO access is moved
 // AFTER the clock/power gating sequence.  The previous build read 0x112a008c
 // before INFRA_AO2/TOPCKGEN were programmed and aborted with a security-style
@@ -56,8 +54,8 @@
 // that the preconditions were missing.
 // [k70u 2026-11-03] Off.  Reading 0x112a008c aborts with SError/FAR=0 even
 // after the INFRA_AO2/TOPCKGEN clock gating is programmed (r5clk build), so
-// the M-PHY registers are not reachable from this firmware at all.  Do not
-// touch them again.
+// no matched evidence establishes the missing access prerequisite. This
+// candidate skips the PHY path; do not infer an architectural permission limit.
 #define MTKUFS_SKIP_PHY_POWERON   1
 // Explicit independent SiP switches. They are OFF in safe/diagnostic mode.
 // Only enable after verifying the specific EL3 UFS handler on this device.
@@ -69,9 +67,8 @@
 // SError (FAR=0).  Keeping the device in the state the bootloader handed over
 // is the conservative next step; the reset can be re-enabled once the PHY
 // window access is understood.
-// [k70u 2026-11-03] EL2 build: OFF.  The SMC instruction may only be issued
-// from EL3; at EL2 it raises an SError (EC 0x2F, ISS 0x011) instead of
-// trapping to EL3 the way it does at EL1.
+// SMC calls can originate below EL3; the actual routing depends on the
+// exception-level configuration. Prior SError does not prove an EL2 ban.
 // [k70u 2026-11-03] Off.  This is the combination that has never actually been
 // executed: earlier attempts either re-enabled the device reset or crashed on
 // the M-PHY snapshot before reaching it.  The device reset pulse puts the UFS
@@ -79,7 +76,7 @@
 // here (its registers abort), which matches the persistent LINERESET
 // indication in UECPA (0x80000010) and HCS.DP staying 0.
 #define ROTHKO_UFS_DEVICE_RESET_SMC   0
-// [k70u 2026-11-03] EL2 build: OFF, same reason as the device reset above.
+// Preserve device reset/refclk state for unx18; no general EL2 SMC claim.
 #define ROTHKO_UFS_REFCLK_SMC         0
 
 #define INFRA_AO2_CG_CLR          0xA8U

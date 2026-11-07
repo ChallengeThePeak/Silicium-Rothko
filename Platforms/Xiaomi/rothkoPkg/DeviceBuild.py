@@ -36,7 +36,7 @@ class CommonPlatform ():
         "Mu_Basecore",
         "Silicon/MediaTek",
         "Silicon/Silicium",
-        "../../UniXNU/package",
+        "../UniXNU/package",
         "Silicium-ACPI",
         "Silicium-ACPI/Platforms/Xiaomi",
         "Silicium-ACPI/Silicon/MediaTek"

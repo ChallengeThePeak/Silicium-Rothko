@@ -40,25 +40,39 @@ outputs, device dumps, private keys and boot images are not tracked.
 
 ## UFS safety state
 
-The unx18 pass intentionally keeps firmware away from persistent UFS state:
+The unx18 pass removes the known refclk attribute rewrite and limits several
+firmware storage write paths:
 
 - `Platform.RefClkFreq` is left obsolete so generic UFS PassThru does not rewrite
   the device `bRefClkFreq` property.
 - MTK device-reset and refclk SMC paths are disabled.
 - `MTKUFS_SKIP_PHY_POWERON` returns before the TOPCKGEN, UFSAO and PDN writes.
 - The UFS Device Config protocol is not published.
-- Media-changing SCSI commands are rejected.
+- FORMAT UNIT, WRITE(6/10/12/16), WRITE BUFFER, UNMAP and SECURITY PROTOCOL OUT
+  are rejected by the retained pass-through filter.
 - Published disk Block I/O is marked read-only.
 
-This is a source and offline-build result. The UFS command/DMA path and hardware
-behavior after the earlier BROM incident are not claimed as verified. The exact
-cause of that incident also remains unresolved.
+The 2026-11-07 offline recheck found that this is a partial opcode denylist:
+other CDBs are forwarded, so the current code does not establish a complete
+media/device-state write prohibition. PreHce also still toggles RTFF through
+SMC BIT9 and changes HCI, AHIT, host options and link state. Skipping PHY
+power-on does not suppress those separate paths. Internal `fDeviceInit`
+initialization is retained.
+
+Stock Linux supports a 52 MHz refclk attribute, but neither the previous
+capture nor the effective DT establishes the device's stored value during the
+unx17 attempt. The 26 MHz branch is confirmed in source; execution, successful
+persistence and causation of BROM are not established.
+
+This is a source and offline-build record. The UFS command/DMA path and hardware
+behavior after the earlier BROM incident are not verified. The exact cause of
+that incident remains unresolved; unx18 is not a recovered-device baseline.
 
 ## Repository layout
 
 ```text
 Platforms/Xiaomi/rothkoPkg/   K70U platform DSC/FDF, board drivers and build entry
-Silicon/MediaTek/MT6989Pkg/   MT6989 platform SEC support
+Silicon/MediaTek/            inherited MediaTek package namespaces
 Silicon/Silicium/             shared Silicium firmware components
 Resources/Configs/rothko.toml boot, FD and handoff configuration
 BootShim/                     boot-loader shim source
@@ -167,12 +181,12 @@ outside Git.
 | GOP/CMD presentation | Observed on earlier matching candidates |
 | Three physical keys | Implemented; full UEFI interaction still needs a matched run |
 | UFS enumeration | Link/DP seen, but the UFS command/DMA path is not closed |
-| UFS write protection | Implemented and build-checked; hardware closure pending |
+| UFS write protection | BlockIo read-only and partial CDB denylist; complete command boundary remains open |
 | Post-BROM recovery | Not performed by this repository |
 
 ## Troubleshooting
 
-`missing file: ../../UniXNU/package` means the sibling device-package link is
+`missing file: ../UniXNU/package` means the sibling device-package link is
 missing. Recreate the `UniXNU/package -> ../UniXNU-rothko/package` link from
 the layout above.
 
